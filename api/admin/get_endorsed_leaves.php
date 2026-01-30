@@ -26,22 +26,19 @@ verifyAccess([3]);
 
 try {
     // Select all leaves that have been Endorsed by a coach
-    $sql = "SELECT 
-                lr.leave_id, 
-                lr.leave_type, 
-                lr.start_date, 
-                lr.end_date, 
-                lr.reason, 
-                lr.created_at,
-                e.first_name, 
-                e.last_name,
-                c.first_name as coach_name
-            FROM leave_requests lr
-            JOIN employees e ON lr.employee_id = e.employee_id
-            LEFT JOIN users u ON lr.reviewed_by = u.user_id
-            LEFT JOIN employees c ON u.employee_id = c.employee_id
-            WHERE lr.status = 'Endorsed'
-            ORDER BY lr.created_at ASC";
+   // api/admin/get_endorsed_leaves.php
+// Change the WHERE clause to include multiple statuses
+$sql = "SELECT 
+            lr.leave_id, lr.leave_type, lr.start_date, lr.end_date, 
+            lr.reason, lr.status, lr.created_at,
+            e.first_name, e.last_name,
+            c.first_name as coach_name
+        FROM leave_requests lr
+        JOIN employees e ON lr.employee_id = e.employee_id
+        LEFT JOIN users u ON lr.reviewed_by = u.user_id
+        LEFT JOIN employees c ON u.employee_id = c.employee_id
+        WHERE lr.status IN ('Endorsed', 'Approved', 'Denied') 
+        ORDER BY lr.created_at DESC";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
