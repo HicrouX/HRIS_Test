@@ -1,44 +1,32 @@
 <?php
 // api/admin/get_endorsed_leaves.php
-
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: GET");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With, X-USER-ROLE");
-
-if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') { http_response_code(200); exit(); }
-
-// -------------------------------------------------------------
-// ⚡ FORCE FIX: Inject URL Parameter into Server Headers
-// -------------------------------------------------------------
-// This tricks auth.php into thinking the header exists, 
-// even if your server stripped it.
-if (isset($_GET['test_role'])) {
-    $_SERVER['HTTP_X_USER_ROLE'] = $_GET['test_role'];
-}
-// -------------------------------------------------------------
 
 require_once '../config/db.php';
 require_once '../middleware/auth.php';
 
-// Verify Admin Access (Role 3)
-verifyAccess([3]); 
+verifyAccess([3, 4]); 
 
 try {
-    // Select all leaves that have been Endorsed by a coach
-   // api/admin/get_endorsed_leaves.php
-// Change the WHERE clause to include multiple statuses
-$sql = "SELECT 
-            lr.leave_id, lr.leave_type, lr.start_date, lr.end_date, 
-            lr.reason, lr.status, lr.created_at,
-            e.first_name, e.last_name,
-            c.first_name as coach_name
-        FROM leave_requests lr
-        JOIN employees e ON lr.employee_id = e.employee_id
-        LEFT JOIN users u ON lr.reviewed_by = u.user_id
-        LEFT JOIN employees c ON u.employee_id = c.employee_id
-        WHERE lr.status IN ('Endorsed', 'Approved', 'Denied') 
-        ORDER BY lr.created_at DESC";
+    // UPDATED SQL: 
+    // 1. Joins 'users' table as 'u_app' to check the APPLICANT's role.
+    // 2. WHERE clause includes 'Pending' requests IF the applicant is Admin(3) or Super Admin(4).
+    $sql = "SELECT 
+                lr.leave_id, lr.leave_type, lr.start_date, lr.end_date, 
+                lr.reason, lr.status, lr.created_at,
+                e.first_name, e.last_name,
+                c.first_name as coach_name
+            FROM leave_requests lr
+            JOIN employees e ON lr.employee_id = e.employee_id
+            LEFT JOIN users u_app ON e.employee_id = u_app.employee_id
+            LEFT JOIN users u_rev ON lr.reviewed_by = u_rev.user_id
+            LEFT JOIN employees c ON u_rev.employee_id = c.employee_id
+            WHERE 
+                lr.status IN ('Endorsed', 'Approved', 'Denied') 
+                OR 
+                (lr.status = 'Pending' AND u_app.role_id IN (3, 4))
+            ORDER BY lr.created_at DESC";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute();

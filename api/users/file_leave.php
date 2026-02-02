@@ -20,7 +20,7 @@ require_once '../middleware/auth.php';
 
 // 2. VERIFY PERMISSIONS
 // This checks if the user is Role 1 (Employee)
-verifyAccess([1]); 
+verifyAccess([1, 2, 3, 4]); 
 
 // 3. GET DATA
 $data = json_decode(file_get_contents("php://input"));

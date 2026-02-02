@@ -4,6 +4,7 @@ require_once 'api/middleware/auth.php';
 verifyAccess([3, 4]); 
 $api_base_url = "http://localhost/hris_official/api"; 
 $user_name = $_SESSION['user_name'] ?? 'Administrator';
+$user_id = $_SESSION['employee_id']; 
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -11,36 +12,62 @@ $user_name = $_SESSION['user_name'] ?? 'Administrator';
     <meta charset="UTF-8">
     <title>iREPLY - Admin Dashboard</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; background: #222; overflow: hidden; }
+        :root { --primary-blue: #1e4d8c; --accent-blue: #3498db; --bg-dark: #222; --text-gray: #666; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; background: var(--bg-dark); overflow: hidden; }
+        
+        /* SIDEBAR */
         .sidebar { width: 240px; background: #fff; padding: 25px; display: flex; flex-direction: column; border-right: 1px solid #ddd; }
-        .logo { color: #1e4d8c; font-weight: bold; font-size: 26px; margin-bottom: 40px; }
+        .logo { color: var(--primary-blue); font-weight: bold; font-size: 26px; margin-bottom: 40px; }
         .user-info { font-size: 11px; font-weight: bold; margin-bottom: 25px; color: #27ae60; text-align: center; }
-        .nav-item { padding: 12px 20px; margin: 5px 0; border-radius: 25px; cursor: pointer; color: #666; font-size: 14px; transition: 0.2s; text-decoration: none; }
-        .nav-item:hover { background: #f0f4f8; }
+        .nav-item { padding: 12px 20px; margin: 5px 0; border-radius: 25px; cursor: pointer; color: var(--text-gray); font-size: 14px; transition: 0.2s; text-decoration: none; }
+        .nav-item:hover { background: #f0f4f8; color: var(--primary-blue); }
         .nav-active { background: #FFC107; color: #000 !important; font-weight: bold; }
         .logout-btn { color: #e74c3c !important; font-weight: bold; }
+        
+        /* CONTENT */
         .main-content { flex: 1; background: #fff; margin: 15px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
         .view-content { display: none; flex-direction: column; height: 100%; overflow-y: auto; }
         .active-view { display: flex; }
-        .header { background: #1e4d8c; color: white; padding: 25px 40px; display: flex; justify-content: space-between; align-items: center; }
+        .header { background: var(--primary-blue); color: white; padding: 25px 40px; display: flex; justify-content: space-between; align-items: center; }
         .container { padding: 30px 40px; }
+        
+        /* TABLES */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { text-align: left; padding: 15px 10px; font-size: 11px; color: #888; text-transform: uppercase; border-bottom: 2px solid #eee; }
         td { padding: 15px 10px; border-bottom: 1px solid #f9f9f9; font-size: 13px; color: #333; }
-        .action-icon { cursor: pointer; font-size: 16px; margin-right: 10px; transition: 0.2s; }
-        .date-input-small { background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.5); color: white; font-size: 13px; cursor: pointer; }
-        .coach-select { padding: 8px; border-radius: 5px; border: none; font-size: 13px; color: #333; cursor: pointer; margin-right: 15px; font-weight: bold; }
-        .badge-coach { background: #fff3e0; color: #e65100; font-size: 10px; padding: 2px 6px; border-radius: 4px; border: 1px solid #ffe0b2; margin-left: 5px; }
         .status-pill { padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 10px; }
+        
+        /* FILING FORMS (From Employee) */
+        .form-card { background: #fafbfc; padding: 30px; border-radius: 8px; border-left: 5px solid var(--accent-blue); margin-bottom: 30px; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }
+        input, select, textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; }
+        textarea { grid-column: span 2; }
+        .submit-btn { grid-column: span 2; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; background: var(--accent-blue); transition: 0.3s; }
+        .submit-btn:hover { background: var(--primary-blue); }
+        
+        /* FILTERS (From Employee) */
+        .date-range-container { display: flex; align-items: center; gap: 10px; font-size: 13px; background: rgba(255,255,255,0.1); padding: 8px 15px; border-radius: 8px; }
+        .date-input-small { background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.5); color: white; font-size: 13px; cursor: pointer; }
+        
+        /* ADMIN SPECIFIC */
+        .clickable-name { color: #1e4d8c; font-weight: bold; cursor: pointer; text-decoration: none; transition: 0.2s; }
+        .clickable-name:hover { text-decoration: underline; color: #27ae60; }
+        .badge-coach { background: #fff3e0; color: #e65100; font-size: 10px; padding: 2px 6px; border-radius: 4px; border: 1px solid #ffe0b2; margin-left: 5px; }
+        .badge-admin { background: #e8f5e9; color: #2e7d32; font-size: 10px; padding: 2px 6px; border-radius: 4px; border: 1px solid #c8e6c9; margin-left: 5px; }
+        .search-box { padding: 8px 12px; border-radius: 20px; border: none; font-size: 13px; width: 200px; margin-right: 15px; outline: none; }
     </style>
 </head>
 <body>
+    <input type="hidden" id="admin_id" value="<?php echo $user_id; ?>">
+
     <div class="sidebar">
         <div class="logo">iREPLY</div>
         <div class="user-info">Administrator: <?php echo htmlspecialchars($user_name); ?></div>
         
         <div class="nav-item nav-active" onclick="switchView('master-view', this)">Master Attendance</div>
         <div class="nav-item" onclick="switchView('approvals-view', this)">Final Approvals</div>
+        <div class="nav-item" onclick="switchView('admin-filing', this)">My Filing Center</div>
+        <div class="nav-item" onclick="switchView('my-attendance', this)">My Attendance Records</div>
         
         <div style="flex: 1;"></div>
         <a href="logout.php" class="nav-item logout-btn">Log Out</a>
@@ -50,19 +77,19 @@ $user_name = $_SESSION['user_name'] ?? 'Administrator';
         <div id="master-view" class="view-content active-view">
             <div class="header">
                 <div>
-                    <h2 style="margin:0; font-size:18px;">📊 Master Attendance</h2>
-                    <span style="font-size:11px; opacity:0.8;">Current View: <span id="viewLabel" style="font-weight:bold; color:#FFC107;">Coaches Only</span></span>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <button id="backBtn" style="display:none; cursor:pointer;" onclick="resetToLeaders()">⬅ Back</button>
+                        <h2 style="margin:0; font-size:18px;">📊 Master Attendance</h2>
+                    </div>
+                    <span style="font-size:11px; opacity:0.8; margin-top:5px; display:block;">
+                        Viewing: <span id="viewLabel" style="font-weight:bold; color:#FFC107;">Coaches & Admins</span>
+                    </span>
                 </div>
-                
                 <div style="display:flex; align-items:center;">
-                    <select id="viewFilter" class="coach-select" onchange="loadMasterLogs()">
-                        <option value="COACHES" selected>⭐ View Coaches (Default)</option>
-                        <option disabled>────── SELECT TEAM ──────</option>
-                        </select>
-
-                    <input type="date" id="r_start" class="date-input-small" onchange="loadMasterLogs()">
+                    <input type="text" id="adminSearch" class="search-box" placeholder="🔍 Search name..." onkeyup="filterTable('masterTable', 'adminSearch')">
+                    <input type="date" id="r_start" class="date-input-small" onchange="refreshTable()">
                     <span style="font-size:12px; opacity:0.7; margin:0 5px;">to</span>
-                    <input type="date" id="r_end" class="date-input-small" onchange="loadMasterLogs()">
+                    <input type="date" id="r_end" class="date-input-small" onchange="refreshTable()">
                 </div>
             </div>
             <div class="container">
@@ -82,111 +109,240 @@ $user_name = $_SESSION['user_name'] ?? 'Administrator';
                 <table id="adminOTTable"><thead><tr><th>Employee</th><th>Date/Time</th><th>Purpose</th><th>Action</th></tr></thead><tbody id="adminOTQueue"></tbody></table>
             </div>
         </div>
+
+        <div id="admin-filing" class="view-content">
+            <div class="header" style="background: #3498db;">
+                <h2 style="margin:0;">Filing Center</h2>
+            </div>
+            <div class="container">
+                <div class="form-card">
+                    <h3 style="margin-top:0; color: #1e4d8c;">📝 File Leave Application</h3>
+                    <form id="leaveForm" class="form-grid">
+                        <select id="l_type">
+                            <option value="Sick Leave">Sick Leave</option>
+                            <option value="Vacation Leave">Vacation Leave</option>
+                        </select>
+                        <div></div>
+                        <input type="date" id="l_start" required>
+                        <input type="date" id="l_end" required>
+                        <textarea id="l_reason" placeholder="Briefly explain your reason..." rows="3"></textarea>
+                        <button type="button" class="submit-btn" onclick="submitRequest('leave')">Submit Leave Application</button>
+                    </form>
+                </div>
+                
+                <div class="form-card" style="border-left-color: #27ae60;">
+                    <h3 style="margin-top:0; color: #27ae60;">⏰ Overtime Request</h3>
+                    <form id="otForm" class="form-grid">
+                        <select id="ot_type">
+                            <option value="Regular Overtime">Regular Overtime</option>
+                            <option value="Duty on Rest Day">Duty on Rest Day</option>
+                        </select>
+                        <div></div>
+                        <input type="datetime-local" id="ot_start"> 
+                        <input type="datetime-local" id="ot_end">
+                        <textarea id="ot_purpose" placeholder="Purpose of overtime..." rows="2"></textarea>
+                        <button type="button" class="submit-btn" style="background:#27ae60;" onclick="submitRequest('ot')">Submit OT Request</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="my-attendance" class="view-content">
+            <div class="header">
+                <h2 style="margin:0;">Attendance History</h2>
+                <div class="date-range-container">
+                    <input type="date" id="range_start" class="date-input-small" onchange="loadMyAttendance()">
+                    <span style="opacity: 0.5;">to</span>
+                    <input type="date" id="range_end" class="date-input-small" onchange="loadMyAttendance()">
+                </div>
+            </div>
+            <div class="container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time In</th>
+                            <th>Time Out</th>
+                            <th>Status</th>
+                            <th>Work Hours</th>
+                        </tr>
+                    </thead>
+                    <tbody id="myAttendanceBody"></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <script>
         const API = "<?php echo $api_base_url; ?>";
+        const MY_ID = document.getElementById('admin_id').value;
+        let currentMode = 'COACHES'; 
+        let currentCoachId = null;   
 
         function switchView(viewId, btn) {
             document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active-view'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('nav-active'));
             document.getElementById(viewId).classList.add('active-view');
             btn.classList.add('nav-active');
-            if(viewId === 'master-view') loadMasterLogs();
+            
+            if(viewId === 'master-view') refreshTable();
             if(viewId === 'approvals-view') loadApprovals();
+            if(viewId === 'my-attendance') loadMyAttendance();
         }
 
-        // --- 1. Initialize Dropdown and Load Data ---
-        async function loadCoachesAndInit() {
-            try {
-                // Set Dates
-                const today = new Date();
-                const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-                document.getElementById('r_start').value = firstDay.toISOString().split('T')[0];
-                document.getElementById('r_end').value = today.toISOString().split('T')[0];
+        // --- MY ATTENDANCE (Employee Style Logic) ---
+        async function loadMyAttendance() {
+            const start = document.getElementById('range_start').value;
+            const end = document.getElementById('range_end').value;
+            
+            // Note: Added start_date and end_date params to match Employee Dashboard filters
+            const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${MY_ID}&start_date=${start}&end_date=${end}`);
+            const data = await res.json();
+            
+            const tbody = document.getElementById('myAttendanceBody');
+            if(data.length === 0) {
+                tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>No records found.</td></tr>";
+                return;
+            }
 
-                // Fetch Coach Names for Dropdown
-                const res = await fetch(`${API}/admin/get_coaches.php`);
-                const coaches = await res.json();
-                const select = document.getElementById('viewFilter');
-                
-                coaches.forEach(c => {
-                    const opt = document.createElement('option');
-                    // We store the COACH's EMPLOYEE ID in the value
-                    opt.value = `TEAM_${c.employee_id}`; 
-                    opt.innerText = `👥 Team ${c.first_name} ${c.last_name}`;
-                    select.appendChild(opt);
-                });
-                
-                // Initial Load (Default: Coaches Only)
-                loadMasterLogs();
-            } catch(e) { console.error(e); }
+            tbody.innerHTML = data.map(row => {
+                let statusStyle = "background:#e8f5e9; color:#2e7d32;"; 
+                if(row.attendance_status === 'Late') statusStyle = "background:#fff3e0; color:#e65100;";
+                if(row.attendance_status === 'On Leave') statusStyle = "background:#e3f2fd; color:#1565c0;";
+                if(row.attendance_status === 'Absent') statusStyle = "background:#ffebee; color:#c62828;";
+
+                return `<tr>
+                    <td><strong>${row.attendance_date}</strong></td>
+                    <td>${row.time_in || '--:--'}</td>
+                    <td>${row.time_out || '--:--'}</td>
+                    <td><span class="status-pill" style="${statusStyle}">${row.attendance_status}</span></td>
+                    <td>${row.total_hours || '0.00'} hrs</td>
+                </tr>`;
+            }).join('');
         }
 
-        // --- 2. Master Attendance Logic ---
-        async function loadMasterLogs() {
+        // --- FILING LOGIC (Employee Style Logic) ---
+        async function submitRequest(type) {
+            const endpoint = type === 'leave' ? '/users/file_leave.php' : '/users/file_overtime.php';
+            const formId = type === 'leave' ? 'leaveForm' : 'otForm';
+            
+            let payload = {};
+            if(type === 'leave') {
+                payload = {
+                    employee_id: MY_ID,
+                    leave_type: document.getElementById('l_type').value,
+                    start_date: document.getElementById('l_start').value,
+                    end_date: document.getElementById('l_end').value,
+                    reason: document.getElementById('l_reason').value,
+                    agreement_1: 1, agreement_2: 1
+                };
+            } else {
+                payload = {
+                    employee_id: MY_ID,
+                    ot_type: document.getElementById('ot_type').value,
+                    start_time: document.getElementById('ot_start').value,
+                    end_time: document.getElementById('ot_end').value,
+                    purpose: document.getElementById('ot_purpose').value,
+                    agreement_1: 1, agreement_2: 1
+                };
+            }
+
+            const res = await fetch(`${API}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await res.json();
+            alert(result.success || result.error);
+            if(result.success) {
+                document.getElementById(formId).reset();
+                loadApprovals(); // Also refresh approvals if admin auto-approves
+            }
+        }
+
+        // --- ADMIN DASHBOARD UTILS ---
+        function filterTable(tableId, inputId) {
+            const input = document.getElementById(inputId);
+            const filter = input.value.toLowerCase();
+            const table = document.getElementById(tableId);
+            const rows = table.getElementsByTagName("tr");
+            for (let i = 1; i < rows.length; i++) { 
+                const nameCell = rows[i].getElementsByTagName("td")[0];
+                if (nameCell) {
+                    const txtValue = nameCell.textContent || nameCell.innerText;
+                    rows[i].style.display = txtValue.toLowerCase().indexOf(filter) > -1 ? "" : "none";
+                }
+            }
+        }
+
+        async function refreshTable() {
             const start = document.getElementById('r_start').value;
             const end = document.getElementById('r_end').value;
-            const filterValue = document.getElementById('viewFilter').value;
-            const viewLabel = document.getElementById('viewLabel');
-
             let url = `${API}/admin/get_all_attendance.php?start=${start}&end=${end}`;
 
-            if (filterValue === 'COACHES') {
+            if (currentMode === 'COACHES') {
                 url += `&filter_mode=COACHES`;
-                viewLabel.innerText = "Coaches Only";
-            } else if (filterValue.startsWith('TEAM_')) {
-                const coachId = filterValue.split('_')[1];
-                url += `&filter_mode=TEAM&coach_id=${coachId}`;
-                
-                // Update Label to show selected coach name
-                const sel = document.getElementById('viewFilter');
-                viewLabel.innerText = sel.options[sel.selectedIndex].text;
+                document.getElementById('viewLabel').innerText = "Coaches & Admins";
+                document.getElementById('backBtn').style.display = 'none';
+            } else if (currentMode === 'TEAM') {
+                url += `&filter_mode=TEAM&coach_id=${currentCoachId}`;
+                document.getElementById('backBtn').style.display = 'inline-block';
             }
 
             const res = await fetch(url);
             const data = await res.json();
             const tbody = document.getElementById("masterLogsBody");
-            
+
             if(data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan='4' style='text-align:center; padding:20px; color:#999;'>No records found for this view.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan='4' style='text-align:center; padding:20px; color:#999;'>No records found.</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = data.map(log => {
-                const coachBadge = log.role_id == 2 ? '<span class="badge-coach">Coach</span>' : '';
                 const statusColor = log.attendance_status === 'Present' ? '#27ae60' : (log.attendance_status === 'Absent' ? '#e74c3c' : '#f39c12');
+                let nameDisplay = `<strong>${log.first_name} ${log.last_name}</strong>`;
                 
-                return `
-                <tr>
-                    <td><strong>${log.first_name} ${log.last_name}</strong> ${coachBadge}</td>
-                    <td>${log.attendance_date}</td>
-                    <td><span class="status-pill" style="color:${statusColor}">${log.attendance_status}</span></td>
-                    <td>
-                        <span class="action-icon" onclick="modifyRecord(${log.attendance_id})">✏️</span>
-                        <span class="action-icon" style="color:#e74c3c;" onclick="deleteRecord(${log.attendance_id})">🗑️</span>
-                    </td>
-                </tr>`;
+                if (currentMode === 'COACHES') {
+                    let badge = '';
+                    if (log.role_id == 2) badge = '<span class="badge-coach">Coach</span>';
+                    else if (log.role_id == 3) badge = '<span class="badge-admin">Admin</span>';
+                    else if (log.role_id == 4) badge = '<span class="badge-admin">Super Admin</span>';
+
+                    nameDisplay = `<span class="clickable-name" onclick="viewTeam(${log.employee_id}, '${log.first_name}')">${log.first_name} ${log.last_name}</span> ${badge}`;
+                }
+
+                return `<tr><td>${nameDisplay}</td><td>${log.attendance_date}</td><td><span class="status-pill" style="color:${statusColor}">${log.attendance_status}</span></td><td><span class="action-icon" onclick="modifyRecord(${log.attendance_id})">✏️</span><span class="action-icon" style="color:#e74c3c;" onclick="deleteRecord(${log.attendance_id})">🗑️</span></td></tr>`;
             }).join('');
+            filterTable('masterTable', 'adminSearch');
         }
 
+        function viewTeam(coachId, coachName) { currentMode = 'TEAM'; currentCoachId = coachId; document.getElementById('viewLabel').innerText = `Team ${coachName}`; refreshTable(); }
+        function resetToLeaders() { currentMode = 'COACHES'; currentCoachId = null; refreshTable(); }
+
+        window.onload = function() {
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), 0, 1);
+            const formatDate = (d) => d.toISOString().split('T')[0];
+            
+            // Set defaults for Master Attendance
+            document.getElementById('r_start').value = formatDate(firstDay);
+            document.getElementById('r_end').value = formatDate(today);
+            
+            // Set defaults for My Attendance
+            document.getElementById('range_start').value = formatDate(firstDay);
+            document.getElementById('range_end').value = formatDate(today);
+            
+            refreshTable(); loadApprovals();
+        };
+
         async function loadApprovals() {
-            const [leaveRes, otRes] = await Promise.all([
-                fetch(`${API}/admin/get_endorsed_leaves.php`),
-                fetch(`${API}/admin/get_endorsed_ot.php`)
-            ]);
+            const [leaveRes, otRes] = await Promise.all([fetch(`${API}/admin/get_endorsed_leaves.php`), fetch(`${API}/admin/get_endorsed_ot.php`)]);
             renderQueue(await leaveRes.json(), 'adminLeaveQueue', 'leave');
             renderQueue(await otRes.json(), 'adminOTQueue', 'ot');
         }
 
         function renderQueue(items, id, type) {
-            document.getElementById(id).innerHTML = items.length ? items.map(item => `
-                <tr>
-                    <td><strong>${item.first_name} ${item.last_name}</strong></td>
-                    <td>${item.start_date || item.start_time}</td>
-                    <td style="font-style:italic; color:#666;">"${item.reason || item.purpose}"</td>
-                    <td><span class="action-icon" style="color:#27ae60;" onclick="finalApprove(${item.leave_id || item.ot_id}, '${type}')">✔️</span></td>
-                </tr>`).join('') : `<tr><td colspan='4' style='color:#999;'>No pending items</td></tr>`;
+            document.getElementById(id).innerHTML = items.length ? items.map(item => `<tr><td><strong>${item.first_name} ${item.last_name}</strong></td><td>${item.start_date || item.start_time}</td><td style="font-style:italic; color:#666;">"${item.reason || item.purpose}"</td><td><span class="action-icon" style="color:#27ae60;" onclick="finalApprove(${item.leave_id || item.ot_id}, '${type}')">✔️</span></td></tr>`).join('') : `<tr><td colspan='4' style='color:#999;'>No pending items</td></tr>`;
         }
 
         async function finalApprove(id, type) {
@@ -199,10 +355,8 @@ $user_name = $_SESSION['user_name'] ?? 'Administrator';
         async function deleteRecord(id) {
             if(!confirm("Permanently delete?")) return;
             await fetch(`${API}/admin/delete_attendance.php?attendance_id=${id}`);
-            loadMasterLogs();
+            refreshTable();
         }
-
-        window.onload = loadCoachesAndInit;
     </script>
 </body>
 </html>

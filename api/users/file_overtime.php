@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') { http_response_code(200); exit(); 
 require_once '../config/db.php';
 require_once '../middleware/auth.php'; // Import the security checker
 
-verifyAccess([1]); // Allow Employee Only
+verifyAccess([1, 2, 3, 4]);  // Allow Employee Only
 
 $data = json_decode(file_get_contents("php://input"));
 
