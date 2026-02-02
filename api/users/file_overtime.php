@@ -1,17 +1,23 @@
 <?php
 // api/users/file_overtime.php
+
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Methods: POST");
-// ⚠️ IMPORTANT: We added 'X-USER-ROLE' to the list below
 header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With, X-USER-ROLE");
+
+// 🔴 FIX: Safe Session Start
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') { http_response_code(200); exit(); }
 
 require_once '../config/db.php';
-require_once '../middleware/auth.php'; // Import the security checker
+require_once '../middleware/auth.php'; 
 
-verifyAccess([1, 2, 3, 4]);  // Allow Employee Only
+// 🔴 FIX: Allow All Roles
+verifyAccess([1, 2, 3, 4]); 
 
 $data = json_decode(file_get_contents("php://input"));
 
@@ -22,7 +28,6 @@ if (empty($data->employee_id) || empty($data->ot_type) || empty($data->start_tim
 }
 
 try {
-    // Convert booleans to 1 or 0
     $agree1 = !empty($data->agreement_1) ? 1 : 0;
     $agree2 = !empty($data->agreement_2) ? 1 : 0;
 

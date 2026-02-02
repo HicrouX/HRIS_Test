@@ -1,7 +1,29 @@
 <?php
-session_start();
+// 1. Safe Session Start
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// 2. Check Login
+if (!isset($_SESSION['role_id'])) {
+    header("Location: login.php");
+    exit;
+}
+
+// 3. SMART REDIRECT
+if ($_SESSION['role_id'] == 1) { 
+    header("Location: employee_dashboard.php"); 
+    exit; 
+}
+if ($_SESSION['role_id'] == 2) { 
+    header("Location: coach_dashboard.php"); 
+    exit; 
+}
+
+// 4. Proceed as Admin
 require_once 'api/middleware/auth.php';
 verifyAccess([3, 4]); 
+
 $api_base_url = "http://localhost/hris_official/api"; 
 $user_name = $_SESSION['user_name'] ?? 'Administrator';
 $user_id = $_SESSION['employee_id']; 
@@ -14,8 +36,6 @@ $user_id = $_SESSION['employee_id'];
     <style>
         :root { --primary-blue: #1e4d8c; --accent-blue: #3498db; --bg-dark: #222; --text-gray: #666; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; background: var(--bg-dark); overflow: hidden; }
-        
-        /* SIDEBAR */
         .sidebar { width: 240px; background: #fff; padding: 25px; display: flex; flex-direction: column; border-right: 1px solid #ddd; }
         .logo { color: var(--primary-blue); font-weight: bold; font-size: 26px; margin-bottom: 40px; }
         .user-info { font-size: 11px; font-weight: bold; margin-bottom: 25px; color: #27ae60; text-align: center; }
@@ -23,38 +43,33 @@ $user_id = $_SESSION['employee_id'];
         .nav-item:hover { background: #f0f4f8; color: var(--primary-blue); }
         .nav-active { background: #FFC107; color: #000 !important; font-weight: bold; }
         .logout-btn { color: #e74c3c !important; font-weight: bold; }
-        
-        /* CONTENT */
         .main-content { flex: 1; background: #fff; margin: 15px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
         .view-content { display: none; flex-direction: column; height: 100%; overflow-y: auto; }
         .active-view { display: flex; }
         .header { background: var(--primary-blue); color: white; padding: 25px 40px; display: flex; justify-content: space-between; align-items: center; }
         .container { padding: 30px 40px; }
-        
-        /* TABLES */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { text-align: left; padding: 15px 10px; font-size: 11px; color: #888; text-transform: uppercase; border-bottom: 2px solid #eee; }
         td { padding: 15px 10px; border-bottom: 1px solid #f9f9f9; font-size: 13px; color: #333; }
+        .action-icon { cursor: pointer; font-size: 16px; margin-right: 10px; transition: 0.2s; }
+        .date-input-small { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 5px; border-radius: 4px; font-size: 13px; }
         .status-pill { padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 10px; }
+        .badge-coach { background: #fff3e0; color: #e65100; font-size: 10px; padding: 2px 6px; border-radius: 4px; border: 1px solid #ffe0b2; margin-left: 5px; }
+        .badge-admin { background: #e8f5e9; color: #2e7d32; font-size: 10px; padding: 2px 6px; border-radius: 4px; border: 1px solid #c8e6c9; margin-left: 5px; }
+        .clickable-name { color: #1e4d8c; font-weight: bold; cursor: pointer; text-decoration: none; transition: 0.2s; }
+        .clickable-name:hover { text-decoration: underline; color: #27ae60; }
+        .back-btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); padding: 5px 15px; border-radius: 20px; color: white; cursor: pointer; font-size: 12px; display: none; align-items: center; gap: 5px; }
+        .back-btn:hover { background: rgba(255,255,255,0.3); }
+        .search-box { padding: 8px 12px; border-radius: 20px; border: none; font-size: 13px; width: 200px; margin-right: 15px; outline: none; }
+        .export-btn { background: #27ae60; border: none; padding: 8px 15px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 5px; margin-left: 10px; text-decoration: none; }
+        .export-btn:hover { background: #219150; }
         
-        /* FILING FORMS (From Employee) */
         .form-card { background: #fafbfc; padding: 30px; border-radius: 8px; border-left: 5px solid var(--accent-blue); margin-bottom: 30px; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }
         input, select, textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; }
         textarea { grid-column: span 2; }
         .submit-btn { grid-column: span 2; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; background: var(--accent-blue); transition: 0.3s; }
         .submit-btn:hover { background: var(--primary-blue); }
-        
-        /* FILTERS (From Employee) */
-        .date-range-container { display: flex; align-items: center; gap: 10px; font-size: 13px; background: rgba(255,255,255,0.1); padding: 8px 15px; border-radius: 8px; }
-        .date-input-small { background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.5); color: white; font-size: 13px; cursor: pointer; }
-        
-        /* ADMIN SPECIFIC */
-        .clickable-name { color: #1e4d8c; font-weight: bold; cursor: pointer; text-decoration: none; transition: 0.2s; }
-        .clickable-name:hover { text-decoration: underline; color: #27ae60; }
-        .badge-coach { background: #fff3e0; color: #e65100; font-size: 10px; padding: 2px 6px; border-radius: 4px; border: 1px solid #ffe0b2; margin-left: 5px; }
-        .badge-admin { background: #e8f5e9; color: #2e7d32; font-size: 10px; padding: 2px 6px; border-radius: 4px; border: 1px solid #c8e6c9; margin-left: 5px; }
-        .search-box { padding: 8px 12px; border-radius: 20px; border: none; font-size: 13px; width: 200px; margin-right: 15px; outline: none; }
     </style>
 </head>
 <body>
@@ -78,7 +93,7 @@ $user_id = $_SESSION['employee_id'];
             <div class="header">
                 <div>
                     <div style="display:flex; align-items:center; gap:10px;">
-                        <button id="backBtn" style="display:none; cursor:pointer;" onclick="resetToLeaders()">⬅ Back</button>
+                        <button id="backBtn" class="back-btn" onclick="resetToLeaders()">⬅ Back</button>
                         <h2 style="margin:0; font-size:18px;">📊 Master Attendance</h2>
                     </div>
                     <span style="font-size:11px; opacity:0.8; margin-top:5px; display:block;">
@@ -90,6 +105,7 @@ $user_id = $_SESSION['employee_id'];
                     <input type="date" id="r_start" class="date-input-small" onchange="refreshTable()">
                     <span style="font-size:12px; opacity:0.7; margin:0 5px;">to</span>
                     <input type="date" id="r_end" class="date-input-small" onchange="refreshTable()">
+                    <button class="export-btn" onclick="exportData('ALL')">📂 Export All</button>
                 </div>
             </div>
             <div class="container">
@@ -150,23 +166,16 @@ $user_id = $_SESSION['employee_id'];
         <div id="my-attendance" class="view-content">
             <div class="header">
                 <h2 style="margin:0;">Attendance History</h2>
-                <div class="date-range-container">
-                    <input type="date" id="range_start" class="date-input-small" onchange="loadMyAttendance()">
-                    <span style="opacity: 0.5;">to</span>
-                    <input type="date" id="range_end" class="date-input-small" onchange="loadMyAttendance()">
+                <div style="display:flex; align-items:center;">
+                    <input type="date" id="my_start" class="date-input-small" onchange="loadMyAttendance()">
+                    <span style="margin:0 5px; opacity:0.7; font-size:12px;">to</span>
+                    <input type="date" id="my_end" class="date-input-small" onchange="loadMyAttendance()">
+                    <button class="export-btn" onclick="exportData('MY')">📂 Export Mine</button>
                 </div>
             </div>
             <div class="container">
                 <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Time In</th>
-                            <th>Time Out</th>
-                            <th>Status</th>
-                            <th>Work Hours</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>Date</th><th>Time In</th><th>Time Out</th><th>Status</th><th>Work Hours</th></tr></thead>
                     <tbody id="myAttendanceBody"></tbody>
                 </table>
             </div>
@@ -184,83 +193,58 @@ $user_id = $_SESSION['employee_id'];
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('nav-active'));
             document.getElementById(viewId).classList.add('active-view');
             btn.classList.add('nav-active');
-            
             if(viewId === 'master-view') refreshTable();
             if(viewId === 'approvals-view') loadApprovals();
             if(viewId === 'my-attendance') loadMyAttendance();
         }
 
-        // --- MY ATTENDANCE (Employee Style Logic) ---
+        function exportData(mode) {
+            let start, end;
+            if (mode === 'ALL') {
+                start = document.getElementById('r_start').value;
+                end = document.getElementById('r_end').value;
+            } else {
+                start = document.getElementById('my_start').value;
+                end = document.getElementById('my_end').value;
+            }
+            window.location.href = `${API}/export/export_csv.php?mode=${mode}&start=${start}&end=${end}`;
+        }
+
         async function loadMyAttendance() {
-            const start = document.getElementById('range_start').value;
-            const end = document.getElementById('range_end').value;
-            
-            // Note: Added start_date and end_date params to match Employee Dashboard filters
+            const start = document.getElementById('my_start').value;
+            const end = document.getElementById('my_end').value;
             const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${MY_ID}&start_date=${start}&end_date=${end}`);
             const data = await res.json();
-            
             const tbody = document.getElementById('myAttendanceBody');
-            if(data.length === 0) {
-                tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>No records found.</td></tr>";
-                return;
-            }
+            
+            if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>No records found.</td></tr>"; return; }
 
             tbody.innerHTML = data.map(row => {
                 let statusStyle = "background:#e8f5e9; color:#2e7d32;"; 
                 if(row.attendance_status === 'Late') statusStyle = "background:#fff3e0; color:#e65100;";
                 if(row.attendance_status === 'On Leave') statusStyle = "background:#e3f2fd; color:#1565c0;";
                 if(row.attendance_status === 'Absent') statusStyle = "background:#ffebee; color:#c62828;";
-
-                return `<tr>
-                    <td><strong>${row.attendance_date}</strong></td>
-                    <td>${row.time_in || '--:--'}</td>
-                    <td>${row.time_out || '--:--'}</td>
-                    <td><span class="status-pill" style="${statusStyle}">${row.attendance_status}</span></td>
-                    <td>${row.total_hours || '0.00'} hrs</td>
-                </tr>`;
+                return `<tr><td><strong>${row.attendance_date}</strong></td><td>${row.time_in || '--:--'}</td><td>${row.time_out || '--:--'}</td><td><span class="status-pill" style="${statusStyle}">${row.attendance_status}</span></td><td>${row.total_hours || '0.00'} hrs</td></tr>`;
             }).join('');
         }
 
-        // --- FILING LOGIC (Employee Style Logic) ---
         async function submitRequest(type) {
             const endpoint = type === 'leave' ? '/users/file_leave.php' : '/users/file_overtime.php';
             const formId = type === 'leave' ? 'leaveForm' : 'otForm';
-            
             let payload = {};
+            
             if(type === 'leave') {
-                payload = {
-                    employee_id: MY_ID,
-                    leave_type: document.getElementById('l_type').value,
-                    start_date: document.getElementById('l_start').value,
-                    end_date: document.getElementById('l_end').value,
-                    reason: document.getElementById('l_reason').value,
-                    agreement_1: 1, agreement_2: 1
-                };
+                payload = { employee_id: MY_ID, leave_type: document.getElementById('l_type').value, start_date: document.getElementById('l_start').value, end_date: document.getElementById('l_end').value, reason: document.getElementById('l_reason').value, agreement_1: 1, agreement_2: 1 };
             } else {
-                payload = {
-                    employee_id: MY_ID,
-                    ot_type: document.getElementById('ot_type').value,
-                    start_time: document.getElementById('ot_start').value,
-                    end_time: document.getElementById('ot_end').value,
-                    purpose: document.getElementById('ot_purpose').value,
-                    agreement_1: 1, agreement_2: 1
-                };
+                payload = { employee_id: MY_ID, ot_type: document.getElementById('ot_type').value, start_time: document.getElementById('ot_start').value, end_time: document.getElementById('ot_end').value, purpose: document.getElementById('ot_purpose').value, agreement_1: 1, agreement_2: 1 };
             }
 
-            const res = await fetch(`${API}${endpoint}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            const res = await fetch(`${API}${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const result = await res.json();
             alert(result.success || result.error);
-            if(result.success) {
-                document.getElementById(formId).reset();
-                loadApprovals(); // Also refresh approvals if admin auto-approves
-            }
+            if(result.success) { document.getElementById(formId).reset(); loadApprovals(); }
         }
 
-        // --- ADMIN DASHBOARD UTILS ---
         function filterTable(tableId, inputId) {
             const input = document.getElementById(inputId);
             const filter = input.value.toLowerCase();
@@ -293,24 +277,15 @@ $user_id = $_SESSION['employee_id'];
             const data = await res.json();
             const tbody = document.getElementById("masterLogsBody");
 
-            if(data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan='4' style='text-align:center; padding:20px; color:#999;'>No records found.</td></tr>`;
-                return;
-            }
+            if(data.length === 0) { tbody.innerHTML = `<tr><td colspan='4' style='text-align:center; padding:20px; color:#999;'>No records found.</td></tr>`; return; }
 
             tbody.innerHTML = data.map(log => {
                 const statusColor = log.attendance_status === 'Present' ? '#27ae60' : (log.attendance_status === 'Absent' ? '#e74c3c' : '#f39c12');
                 let nameDisplay = `<strong>${log.first_name} ${log.last_name}</strong>`;
-                
                 if (currentMode === 'COACHES') {
-                    let badge = '';
-                    if (log.role_id == 2) badge = '<span class="badge-coach">Coach</span>';
-                    else if (log.role_id == 3) badge = '<span class="badge-admin">Admin</span>';
-                    else if (log.role_id == 4) badge = '<span class="badge-admin">Super Admin</span>';
-
+                    let badge = log.role_id == 2 ? '<span class="badge-coach">Coach</span>' : (log.role_id >= 3 ? '<span class="badge-admin">Admin</span>' : '');
                     nameDisplay = `<span class="clickable-name" onclick="viewTeam(${log.employee_id}, '${log.first_name}')">${log.first_name} ${log.last_name}</span> ${badge}`;
                 }
-
                 return `<tr><td>${nameDisplay}</td><td>${log.attendance_date}</td><td><span class="status-pill" style="color:${statusColor}">${log.attendance_status}</span></td><td><span class="action-icon" onclick="modifyRecord(${log.attendance_id})">✏️</span><span class="action-icon" style="color:#e74c3c;" onclick="deleteRecord(${log.attendance_id})">🗑️</span></td></tr>`;
             }).join('');
             filterTable('masterTable', 'adminSearch');
@@ -323,15 +298,10 @@ $user_id = $_SESSION['employee_id'];
             const today = new Date();
             const firstDay = new Date(today.getFullYear(), 0, 1);
             const formatDate = (d) => d.toISOString().split('T')[0];
-            
-            // Set defaults for Master Attendance
             document.getElementById('r_start').value = formatDate(firstDay);
             document.getElementById('r_end').value = formatDate(today);
-            
-            // Set defaults for My Attendance
-            document.getElementById('range_start').value = formatDate(firstDay);
-            document.getElementById('range_end').value = formatDate(today);
-            
+            document.getElementById('my_start').value = formatDate(firstDay);
+            document.getElementById('my_end').value = formatDate(today);
             refreshTable(); loadApprovals();
         };
 

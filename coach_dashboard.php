@@ -1,5 +1,26 @@
 <?php
-session_start();
+// 1. Safe Session Start
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// 2. Check Login
+if (!isset($_SESSION['role_id'])) {
+    header("Location: login.php");
+    exit;
+}
+
+// 3. SMART REDIRECT
+if ($_SESSION['role_id'] == 1) { 
+    header("Location: employee_dashboard.php"); 
+    exit; 
+}
+if ($_SESSION['role_id'] >= 3) { 
+    header("Location: admin_dashboard.php"); 
+    exit; 
+}
+
+// 4. Proceed as Coach
 require_once 'api/middleware/auth.php';
 verifyAccess([2]); 
 
@@ -31,17 +52,17 @@ $user_name = $_SESSION['user_name'];
         th, td { text-align: left; padding: 15px; border-bottom: 1px solid #f9f9f9; font-size: 13px; }
         .search-box { padding: 8px 12px; border-radius: 20px; border: none; font-size: 13px; width: 200px; outline: none; }
         
-        /* MATCHING EMPLOYEE STYLES */
         .form-card { background: #fafbfc; padding: 30px; border-radius: 8px; border-left: 5px solid var(--accent-blue); margin-bottom: 30px; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }
         input, select, textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; }
         textarea { grid-column: span 2; }
         .submit-btn { grid-column: span 2; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; background: var(--accent-blue); transition: 0.3s; }
         .submit-btn:hover { background: var(--primary-blue); }
-        
         .date-range-container { display: flex; align-items: center; gap: 10px; font-size: 13px; background: rgba(255,255,255,0.1); padding: 8px 15px; border-radius: 8px; }
-        .date-input-small { background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.5); color: white; font-size: 13px; cursor: pointer; }
+        .date-input-small { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 5px; border-radius: 4px; font-size: 13px; cursor: pointer; }
         .status-pill { padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 10px; }
+        .export-btn { background: #27ae60; border: none; padding: 8px 15px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 5px; margin-left: 10px; text-decoration: none; }
+        .export-btn:hover { background: #219150; }
     </style>
 </head>
 <body>
@@ -61,7 +82,15 @@ $user_name = $_SESSION['user_name'];
         <div id="team-view" class="view-content active-view">
             <div class="header">
                 <h2>👥 Team Cluster Attendance</h2>
-                <input type="text" id="coachSearch" class="search-box" placeholder="🔍 Search employee..." onkeyup="filterTable('attendanceTable', 'coachSearch')">
+                <div style="display:flex; align-items:center;">
+                    <input type="text" id="coachSearch" class="search-box" placeholder="🔍 Search employee..." onkeyup="filterTable('attendanceTable', 'coachSearch')">
+                    
+                    <input type="date" id="t_start" class="date-input-small" style="margin-left:15px;">
+                    <span style="color:white; margin:0 5px; font-size:12px;">to</span>
+                    <input type="date" id="t_end" class="date-input-small">
+                    
+                    <button class="export-btn" onclick="exportData('TEAM')">📂 Export Team</button>
+                </div>
             </div>
             <div class="container">
                 <table id="attendanceTable">
@@ -123,19 +152,12 @@ $user_name = $_SESSION['user_name'];
                     <input type="date" id="range_start" class="date-input-small" onchange="loadMyAttendance()">
                     <span style="opacity: 0.5;">to</span>
                     <input type="date" id="range_end" class="date-input-small" onchange="loadMyAttendance()">
+                    <button class="export-btn" onclick="exportData('MY')">📂 Export Mine</button>
                 </div>
             </div>
             <div class="container">
                 <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Time In</th>
-                            <th>Time Out</th>
-                            <th>Status</th>
-                            <th>Work Hours</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>Date</th><th>Time In</th><th>Time Out</th><th>Status</th><th>Work Hours</th></tr></thead>
                     <tbody id="myAttendanceBody"></tbody>
                 </table>
             </div>
@@ -157,73 +179,53 @@ $user_name = $_SESSION['user_name'];
             if(viewId === 'my-attendance') loadMyAttendance();
         }
 
-        // --- MY ATTENDANCE ---
+        function exportData(mode) {
+            let start, end;
+            if (mode === 'TEAM') {
+                start = document.getElementById('t_start').value;
+                end = document.getElementById('t_end').value;
+            } else {
+                start = document.getElementById('range_start').value;
+                end = document.getElementById('range_end').value;
+            }
+            window.location.href = `${API}/export/export_csv.php?mode=${mode}&start=${start}&end=${end}&coach_id=${COACH_ID}`;
+        }
+
         async function loadMyAttendance() {
             const start = document.getElementById('range_start').value;
             const end = document.getElementById('range_end').value;
-            
             const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${COACH_ID}&start_date=${start}&end_date=${end}`);
             const data = await res.json();
-            
             const tbody = document.getElementById('myAttendanceBody');
-            if(data.length === 0) {
-                tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>No records found.</td></tr>";
-                return;
-            }
+            
+            if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>No records found.</td></tr>"; return; }
 
             tbody.innerHTML = data.map(row => {
                 let statusStyle = "background:#e8f5e9; color:#2e7d32;"; 
                 if(row.attendance_status === 'Late') statusStyle = "background:#fff3e0; color:#e65100;";
                 if(row.attendance_status === 'On Leave') statusStyle = "background:#e3f2fd; color:#1565c0;";
                 if(row.attendance_status === 'Absent') statusStyle = "background:#ffebee; color:#c62828;";
-
-                return `<tr>
-                    <td><strong>${row.attendance_date}</strong></td>
-                    <td>${row.time_in || '--:--'}</td>
-                    <td>${row.time_out || '--:--'}</td>
-                    <td><span class="status-pill" style="${statusStyle}">${row.attendance_status}</span></td>
-                    <td>${row.total_hours || '0.00'} hrs</td>
-                </tr>`;
+                return `<tr><td><strong>${row.attendance_date}</strong></td><td>${row.time_in || '--:--'}</td><td>${row.time_out || '--:--'}</td><td><span class="status-pill" style="${statusStyle}">${row.attendance_status}</span></td><td>${row.total_hours || '0.00'} hrs</td></tr>`;
             }).join('');
         }
 
-        // --- FILING LOGIC ---
         async function submitRequest(type) {
             const endpoint = type === 'leave' ? '/users/file_leave.php' : '/users/file_overtime.php';
             const formId = type === 'leave' ? 'leaveForm' : 'otForm';
-            
             let payload = {};
+            
             if(type === 'leave') {
-                payload = {
-                    employee_id: COACH_ID,
-                    leave_type: document.getElementById('l_type').value,
-                    start_date: document.getElementById('l_start').value,
-                    end_date: document.getElementById('l_end').value,
-                    reason: document.getElementById('l_reason').value,
-                    agreement_1: 1, agreement_2: 1
-                };
+                payload = { employee_id: COACH_ID, leave_type: document.getElementById('l_type').value, start_date: document.getElementById('l_start').value, end_date: document.getElementById('l_end').value, reason: document.getElementById('l_reason').value, agreement_1: 1, agreement_2: 1 };
             } else {
-                payload = {
-                    employee_id: COACH_ID,
-                    ot_type: document.getElementById('ot_type').value,
-                    start_time: document.getElementById('ot_start').value,
-                    end_time: document.getElementById('ot_end').value,
-                    purpose: document.getElementById('ot_purpose').value,
-                    agreement_1: 1, agreement_2: 1
-                };
+                payload = { employee_id: COACH_ID, ot_type: document.getElementById('ot_type').value, start_time: document.getElementById('ot_start').value, end_time: document.getElementById('ot_end').value, purpose: document.getElementById('ot_purpose').value, agreement_1: 1, agreement_2: 1 };
             }
 
-            const res = await fetch(`${API}${endpoint}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            const res = await fetch(`${API}${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const result = await res.json();
             alert(result.success || result.error);
             if(result.success) document.getElementById(formId).reset();
         }
 
-        // --- EXISTING COACH UTILS ---
         function filterTable(tableId, inputId) {
             const input = document.getElementById(inputId);
             const filter = input.value.toLowerCase();
@@ -273,10 +275,10 @@ $user_name = $_SESSION['user_name'];
             const today = new Date();
             const firstDay = new Date(today.getFullYear(), 0, 1);
             const formatDate = (d) => d.toISOString().split('T')[0];
-            
             document.getElementById('range_start').value = formatDate(firstDay);
             document.getElementById('range_end').value = formatDate(today);
-            
+            document.getElementById('t_start').value = formatDate(firstDay);
+            document.getElementById('t_end').value = formatDate(today);
             loadAttendance();
         };
     </script>

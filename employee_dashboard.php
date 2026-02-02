@@ -1,6 +1,26 @@
 <?php
-// MUST BE THE VERY FIRST LINE - NO SPACES ABOVE
-session_start();
+// 1. Safe Session Start
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// 2. Check Login
+if (!isset($_SESSION['role_id'])) {
+    header("Location: login.php");
+    exit;
+}
+
+// 3. SMART REDIRECT
+if ($_SESSION['role_id'] == 2) { 
+    header("Location: coach_dashboard.php"); 
+    exit; 
+}
+if ($_SESSION['role_id'] >= 3) { 
+    header("Location: admin_dashboard.php"); 
+    exit; 
+}
+
+// 4. Proceed as Employee
 require_once 'api/middleware/auth.php';
 verifyAccess([1]); 
 
@@ -24,19 +44,16 @@ $user_name = $_SESSION['user_name'];
 
         body { font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; margin: 0; display: flex; height: 100vh; background: var(--bg-dark); color: #333; overflow: hidden; }
         
-        /* SIDEBAR NAVIGATION */
         .sidebar { width: 240px; background: #fff; padding: 25px; display: flex; flex-direction: column; border-right: 1px solid #ddd; transition: all 0.3s; }
         .logo { color: var(--primary-blue); font-weight: bold; font-size: 26px; margin-bottom: 40px; display: flex; align-items: center; gap: 10px; }
         .nav-item { padding: 12px 20px; margin: 5px 0; border-radius: 25px; cursor: pointer; color: var(--text-gray); font-size: 14px; text-decoration: none; transition: 0.2s; }
         .nav-item:hover { background: #f0f4f8; color: var(--primary-blue); }
         .nav-active { background: var(--accent-blue); color: #fff !important; box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3); }
         
-        /* MAIN CONTENT VIEWS */
         .main-content { flex: 1; background: #fff; margin: 15px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; }
         .content-view { display: none; flex-direction: column; height: 100%; overflow-y: auto; }
         .view-active { display: flex; }
 
-        /* HEADER & FILTERS */
         .view-header { background: var(--primary-blue); color: white; padding: 25px 40px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
         .date-range-container { display: flex; align-items: center; gap: 10px; font-size: 13px; background: rgba(255,255,255,0.1); padding: 8px 15px; border-radius: 8px; }
         .date-input-small { background: transparent; border: none; color: white; font-size: 13px; cursor: pointer; outline: none; }
@@ -44,14 +61,14 @@ $user_name = $_SESSION['user_name'];
         .filter-bar { background: #f8f9fa; padding: 15px 40px; border-bottom: 1px solid #eee; display: flex; gap: 15px; }
         select { padding: 8px 15px; border-radius: 6px; border: 1px solid #ddd; font-size: 13px; background: white; }
 
-        /* ATTENDANCE TABLE */
         .table-wrapper { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; min-width: 700px; }
         th { text-align: left; padding: 18px 40px; font-size: 12px; color: #888; text-transform: uppercase; border-bottom: 2px solid #eee; }
         td { padding: 18px 40px; font-size: 14px; color: #444; border-bottom: 1px solid #f9f9f9; }
         .status-pill { padding: 6px 14px; border-radius: 20px; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+        .export-btn { background: #27ae60; border: none; padding: 8px 15px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 5px; margin-left: 10px; text-decoration: none; }
+        .export-btn:hover { background: #219150; }
 
-        /* FORM FILING CENTER */
         .form-container { padding: 40px; max-width: 900px; }
         .form-card { background: #fafbfc; padding: 30px; border-radius: 8px; border-left: 5px solid var(--accent-blue); margin-bottom: 30px; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }
@@ -86,6 +103,7 @@ $user_name = $_SESSION['user_name'];
                     <input type="date" id="range_start" class="date-input-small" onchange="loadMyAttendance()">
                     <span style="opacity: 0.5;">to</span>
                     <input type="date" id="range_end" class="date-input-small" onchange="loadMyAttendance()">
+                    <button class="export-btn" onclick="exportData()">📂 Export</button>
                 </div>
             </div>
 
@@ -102,15 +120,7 @@ $user_name = $_SESSION['user_name'];
 
             <div class="table-wrapper">
                 <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Time In</th>
-                            <th>Time Out</th>
-                            <th>Status</th>
-                            <th>Work Hours</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>Date</th><th>Time In</th><th>Time Out</th><th>Status</th><th>Work Hours</th></tr></thead>
                     <tbody id="attendanceLogs"></tbody>
                 </table>
             </div>
@@ -141,8 +151,8 @@ $user_name = $_SESSION['user_name'];
                     <h3 style="margin-top:0; color: #27ae60;">⏰ Overtime Request</h3>
                     <form id="otForm" class="form-grid">
                         <select id="ot_type" class="form-input">
-                            <option value="Regular OT">Regular Overtime</option>
-                            <option value="Rest Day OT">Rest Day Overtime</option>
+                            <option value="Regular Overtime">Regular Overtime</option>
+                            <option value="Duty on Rest Day">Duty on Rest Day</option>
                         </select>
                         <div></div>
                         <input type="datetime-local" id="ot_start" title="OT Start Time" required>
@@ -160,13 +170,18 @@ $user_name = $_SESSION['user_name'];
         const API = "<?php echo $api_base_url; ?>";
         const EMP_ID = "<?php echo $emp_id; ?>";
 
-        // Toggle View Functionality
         function toggleView(viewId, navBtn) {
             document.querySelectorAll('.content-view').forEach(v => v.classList.remove('view-active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('nav-active'));
             document.getElementById(viewId).classList.add('view-active');
             navBtn.classList.add('nav-active');
             if(viewId === 'attendance-view') loadMyAttendance();
+        }
+
+        function exportData() {
+            const start = document.getElementById('range_start').value;
+            const end = document.getElementById('range_end').value;
+            window.location.href = `${API}/export/export_csv.php?mode=MY&start=${start}&end=${end}`;
         }
 
         async function loadMyAttendance() {
@@ -185,14 +200,7 @@ $user_name = $_SESSION['user_name'];
                     if(row.attendance_status === 'Late') statusStyle = "background:#fff3e0; color:#e65100;";
                     if(row.attendance_status === 'On Leave') statusStyle = "background:#e3f2fd; color:#1565c0;";
                     if(row.attendance_status === 'Absent') statusStyle = "background:#ffebee; color:#c62828;";
-
-                    return `<tr>
-                        <td><strong>${row.attendance_date}</strong></td>
-                        <td>${row.time_in || '--:--'}</td>
-                        <td>${row.time_out || '--:--'}</td>
-                        <td><span class="status-pill" style="${statusStyle}">${row.attendance_status}</span></td>
-                        <td>${row.total_hours || '0.00'} hrs</td>
-                    </tr>`;
+                    return `<tr><td><strong>${row.attendance_date}</strong></td><td>${row.time_in || '--:--'}</td><td>${row.time_out || '--:--'}</td><td><span class="status-pill" style="${statusStyle}">${row.attendance_status}</span></td><td>${row.total_hours || '0.00'} hrs</td></tr>`;
                 }).join('');
             } catch (err) { console.error("Error loading logs:", err); }
         }
