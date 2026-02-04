@@ -1,6 +1,6 @@
 <?php
 // api/middleware/auth.php
-
+header("Content-Type: text/html; charset=UTF-8");
 // 🔴 FIX: Start Session ONLY if it's not already running
 if (session_status() === PHP_SESSION_NONE) {
     session_start();

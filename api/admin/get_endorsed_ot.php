@@ -1,36 +1,24 @@
 <?php
-// api/admin/get_endorsed_ot.php
-require_once '../config/db.php';
-require_once '../middleware/auth.php';
+header("Access-Control-Allow-Origin: *");
+header("Content-Type: application/json; charset=UTF-8");
 
-verifyAccess([3, 4]);
+require_once '../config/db.php';
 
 try {
-    // UPDATED SQL: Includes Pending OT from Admins/Super Admins
-    $sql = "SELECT 
-                ot.ot_id, 
-                ot.ot_type, 
-                ot.start_time, 
-                ot.end_time, 
-                ot.purpose, 
-                ot.status,
-                e.first_name, 
-                e.last_name, 
-                e.position
-            FROM overtime_requests ot
-            JOIN employees e ON ot.employee_id = e.employee_id
-            LEFT JOIN users u_app ON e.employee_id = u_app.employee_id
-            WHERE 
-                ot.status IN ('Endorsed', 'Approved', 'Denied')
-                OR
-                (ot.status = 'Pending' AND u_app.role_id IN (3, 4))
-            ORDER BY ot.start_time ASC";
+    // FIX: Added "WHERE status = 'Endorsed'"
+    $sql = "SELECT o.*, e.first_name, e.last_name 
+            FROM overtime_requests o
+            JOIN employees e ON o.employee_id = e.employee_id
+            WHERE o.status = 'Endorsed' 
+            ORDER BY o.created_at ASC";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
+    $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
-} catch (Exception $e) {
-    echo json_encode([]);
+    echo json_encode($data);
+} catch (PDOException $e) {
+    http_response_code(500);
+    echo json_encode(["error" => $e->getMessage()]);
 }
 ?>

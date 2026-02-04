@@ -61,10 +61,10 @@ $user_name = $_SESSION['user_name'];
         .filter-bar { background: #f8f9fa; padding: 15px 40px; border-bottom: 1px solid #eee; display: flex; gap: 15px; }
         select { padding: 8px 15px; border-radius: 6px; border: 1px solid #ddd; font-size: 13px; background: white; }
 
-        .table-wrapper { overflow-x: auto; }
+        .table-wrapper { overflow-x: auto; padding: 20px 40px; }
         table { width: 100%; border-collapse: collapse; min-width: 700px; }
-        th { text-align: left; padding: 18px 40px; font-size: 12px; color: #888; text-transform: uppercase; border-bottom: 2px solid #eee; }
-        td { padding: 18px 40px; font-size: 14px; color: #444; border-bottom: 1px solid #f9f9f9; }
+        th { text-align: left; padding: 18px 10px; font-size: 12px; color: #888; text-transform: uppercase; border-bottom: 2px solid #eee; }
+        td { padding: 18px 10px; font-size: 14px; color: #444; border-bottom: 1px solid #f9f9f9; }
         .status-pill { padding: 6px 14px; border-radius: 20px; font-weight: 600; font-size: 11px; text-transform: uppercase; }
         .export-btn { background: #27ae60; border: none; padding: 8px 15px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 5px; margin-left: 10px; text-decoration: none; }
         .export-btn:hover { background: #219150; }
@@ -75,6 +75,12 @@ $user_name = $_SESSION['user_name'];
         textarea { grid-column: span 2; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; resize: vertical; }
         .submit-btn { grid-column: span 2; padding: 14px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; background: var(--accent-blue); transition: 0.3s; }
         .submit-btn:hover { background: var(--primary-blue); }
+
+        /* Status Colors */
+        .status-Pending { background: #fff3e0; color: #e67e22; }
+        .status-Endorsed { background: #e3f2fd; color: #3498db; }
+        .status-Approved { background: #e8f5e9; color: #27ae60; }
+        .status-Denied { background: #ffebee; color: #e74c3c; }
 
         @media (max-width: 992px) {
             .sidebar { width: 80px; padding: 20px 10px; align-items: center; }
@@ -87,8 +93,9 @@ $user_name = $_SESSION['user_name'];
         <div class="logo">iREPLY</div>
         <div style="font-size: 11px; font-weight: bold; margin-bottom: 25px; color: var(--text-gray); text-align: center;">ID: <?php echo $emp_id; ?></div>
         
-        <a class="nav-item nav-active" id="nav-attendance" onclick="toggleView('attendance-view', this)"><span>Attendance</span></a>
-        <a class="nav-item" id="nav-requests" onclick="toggleView('request-view', this)"><span>File Request</span></a>
+        <a class="nav-item nav-active" onclick="toggleView('attendance-view', this)"><span>Attendance</span></a>
+        <a class="nav-item" onclick="toggleView('my-requests-view', this)"><span>My Requests</span></a>
+        <a class="nav-item" onclick="toggleView('request-view', this)"><span>File Request</span></a>
         
         <div style="flex: 1;"></div>
         <a href="logout.php" class="nav-item" style="color: #e74c3c;"><span>Log Out</span></a>
@@ -122,6 +129,27 @@ $user_name = $_SESSION['user_name'];
                 <table>
                     <thead><tr><th>Date</th><th>Time In</th><th>Time Out</th><th>Status</th><th>Work Hours</th></tr></thead>
                     <tbody id="attendanceLogs"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="my-requests-view" class="content-view">
+            <div class="view-header" style="background: #8e44ad;">
+                <h2 style="margin:0; font-weight: 500;">My Request Status</h2>
+                <button class="export-btn" onclick="loadMyRequests()">🔄 Refresh</button>
+            </div>
+            
+            <div class="table-wrapper">
+                <h3 style="color:#666;">Leave Requests</h3>
+                <table>
+                    <thead><tr><th>Type</th><th>Date Range</th><th>Reason</th><th>Status</th><th>Filed On</th></tr></thead>
+                    <tbody id="myLeaveLogs"></tbody>
+                </table>
+
+                <h3 style="color:#666; margin-top:40px;">Overtime Requests</h3>
+                <table>
+                    <thead><tr><th>Type</th><th>Time Range</th><th>Purpose</th><th>Status</th><th>Filed On</th></tr></thead>
+                    <tbody id="myOTLogs"></tbody>
                 </table>
             </div>
         </div>
@@ -175,7 +203,9 @@ $user_name = $_SESSION['user_name'];
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('nav-active'));
             document.getElementById(viewId).classList.add('view-active');
             navBtn.classList.add('nav-active');
+            
             if(viewId === 'attendance-view') loadMyAttendance();
+            if(viewId === 'my-requests-view') loadMyRequests(); // Load requests when tab is clicked
         }
 
         function exportData() {
@@ -195,6 +225,9 @@ $user_name = $_SESSION['user_name'];
                 const res = await fetch(url);
                 const data = await res.json();
                 const tbody = document.getElementById("attendanceLogs");
+                
+                if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>No records found.</td></tr>"; return; }
+
                 tbody.innerHTML = data.map(row => {
                     let statusStyle = "background:#e8f5e9; color:#2e7d32;"; 
                     if(row.attendance_status === 'Late') statusStyle = "background:#fff3e0; color:#e65100;";
@@ -203,6 +236,46 @@ $user_name = $_SESSION['user_name'];
                     return `<tr><td><strong>${row.attendance_date}</strong></td><td>${row.time_in || '--:--'}</td><td>${row.time_out || '--:--'}</td><td><span class="status-pill" style="${statusStyle}">${row.attendance_status}</span></td><td>${row.total_hours || '0.00'} hrs</td></tr>`;
                 }).join('');
             } catch (err) { console.error("Error loading logs:", err); }
+        }
+
+        // NEW: Load My Requests (Leaves & OT)
+        async function loadMyRequests() {
+            try {
+                const res = await fetch(`${API}/users/get_my_requests.php?employee_id=${EMP_ID}`);
+                const data = await res.json();
+                
+                // Render Leaves
+                const leaveBody = document.getElementById("myLeaveLogs");
+                if (data.leaves.length === 0) {
+                    leaveBody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>No leave requests found.</td></tr>";
+                } else {
+                    leaveBody.innerHTML = data.leaves.map(l => `
+                        <tr>
+                            <td>${l.leave_type}</td>
+                            <td>${l.start_date} to ${l.end_date}</td>
+                            <td>${l.reason}</td>
+                            <td><span class="status-pill status-${l.status}">${l.status}</span></td>
+                            <td style="font-size:12px; color:#888;">${l.created_at}</td>
+                        </tr>
+                    `).join('');
+                }
+
+                // Render OT
+                const otBody = document.getElementById("myOTLogs");
+                if (data.overtime.length === 0) {
+                    otBody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>No overtime requests found.</td></tr>";
+                } else {
+                    otBody.innerHTML = data.overtime.map(o => `
+                        <tr>
+                            <td>${o.ot_type}</td>
+                            <td>${o.start_time}<br>to ${o.end_time}</td>
+                            <td>${o.purpose}</td>
+                            <td><span class="status-pill status-${o.status}">${o.status}</span></td>
+                            <td style="font-size:12px; color:#888;">${o.created_at}</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch(e) { console.error(e); }
         }
 
         async function submitRequest(type) {
@@ -234,11 +307,27 @@ $user_name = $_SESSION['user_name'];
                 });
                 const result = await res.json();
                 alert(result.success || result.error);
-                if(result.success) document.getElementById(formId).reset();
+                if(result.success) {
+                    document.getElementById(formId).reset();
+                    // If user is on the request tab, reload it to show the new pending item
+                    if(document.getElementById('my-requests-view').classList.contains('view-active')) {
+                        loadMyRequests();
+                    }
+                }
             } catch (err) { alert("Submission failed. Check API."); }
         }
         
-        loadMyAttendance();
+        window.onload = function() {
+            // Set date inputs to this month
+            const d = new Date(), y = d.getFullYear(), m = d.getMonth();
+            const firstDay = new Date(y, m, 1).toISOString().split('T')[0];
+            const today = d.toISOString().split('T')[0];
+            
+            document.getElementById('range_start').value = firstDay;
+            document.getElementById('range_end').value = today;
+            
+            loadMyAttendance();
+        };
     </script>
 </body>
 </html>
