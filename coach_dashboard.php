@@ -27,13 +27,10 @@ $coach_id = $_SESSION['employee_id'];
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { text-align: left; padding: 15px; border-bottom: 1px solid #f9f9f9; font-size: 13px; }
         .status-pill { padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 10px; }
-        
-        /* Status Colors */
         .status-Pending { background: #fff3e0; color: #e67e22; }
         .status-Endorsed { background: #e3f2fd; color: #3498db; }
         .status-Approved { background: #e8f5e9; color: #27ae60; }
         .status-Denied { background: #ffebee; color: #e74c3c; }
-
         .form-card { background: #fafbfc; padding: 30px; border-radius: 8px; border-left: 5px solid var(--accent-blue); margin-bottom: 30px; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }
         input, select, textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; }
@@ -49,9 +46,7 @@ $coach_id = $_SESSION['employee_id'];
         <div class="logo">iREPLY</div>
         <div class="nav-item nav-active" onclick="switchView('team-view', this)">Team Attendance</div>
         <div class="nav-item" onclick="switchView('manage-requests', this)">Manage Endorsements</div>
-        
         <div class="nav-item" onclick="switchView('my-requests-view', this)">My Requests</div>
-        
         <div class="nav-item" onclick="switchView('my-filing', this)">My Filing Center</div>
         <div class="nav-item" onclick="switchView('my-attendance', this)">My Attendance Records</div>
         <div style="flex: 1;"></div>
@@ -64,9 +59,8 @@ $coach_id = $_SESSION['employee_id'];
                 <h2>👥 Team Cluster Attendance</h2>
                 <div style="display:flex; align-items:center;">
                     <input type="text" id="coachSearch" class="search-box" placeholder="Search..." onkeyup="filterTable()" style="padding:8px; border-radius:15px; border:none; width:200px;">
-                    <input type="date" id="t_start" style="margin-left:15px;">
-                    <input type="date" id="t_end" style="margin-left:5px;">
-                    <button class="export-btn" onclick="exportData('TEAM')">📂 Export</button>
+                    <input type="date" id="t_start" style="margin-left:15px;"><input type="date" id="t_end" style="margin-left:5px;">
+                    <button class="export-btn" onclick="exportData('TEAM')">Export</button>
                 </div>
             </div>
             <div class="container"><table id="attendanceTable"><thead><tr><th>Employee</th><th>Date</th><th>Status</th></tr></thead><tbody id="attendanceLogs"></tbody></table></div>
@@ -83,13 +77,13 @@ $coach_id = $_SESSION['employee_id'];
         <div id="my-requests-view" class="view-content">
             <div class="header" style="background: #8e44ad;">
                 <h2 style="margin:0;">My Request Status</h2>
-                <button class="export-btn" onclick="loadMyRequests()">🔄 Refresh</button>
+                <button class="export-btn" onclick="loadMyRequests()">Refresh</button>
             </div>
             <div class="container">
                 <h3 style="color:#666;">My Leave Requests</h3>
-                <table><thead><tr><th>Type</th><th>Date Range</th><th>Reason</th><th>Status</th><th>Filed On</th></tr></thead><tbody id="myLeaveLogs"></tbody></table>
+                <table><thead><tr><th>Type</th><th>Date Range</th><th>Reason</th><th>Status</th><th>Filed On</th><th>Endorsed By</th><th>Approved By</th></tr></thead><tbody id="myLeaveLogs"></tbody></table>
                 <h3 style="color:#666; margin-top:40px;">My Overtime Requests</h3>
-                <table><thead><tr><th>Type</th><th>Time Range</th><th>Purpose</th><th>Status</th><th>Filed On</th></tr></thead><tbody id="myOTLogs"></tbody></table>
+                <table><thead><tr><th>Type</th><th>Time Range</th><th>Purpose</th><th>Status</th><th>Filed On</th><th>Endorsed By</th><th>Approved By</th></tr></thead><tbody id="myOTLogs"></tbody></table>
             </div>
         </div>
 
@@ -102,7 +96,7 @@ $coach_id = $_SESSION['employee_id'];
         </div>
 
         <div id="my-attendance" class="view-content">
-            <div class="header"><h2>Attendance History</h2><div style="display:flex;"><input type="date" id="range_start" onchange="loadMyAttendance()"><input type="date" id="range_end" style="margin-left:5px;" onchange="loadMyAttendance()"><button class="export-btn" onclick="exportData('MY')">📂 Export Mine</button></div></div>
+            <div class="header"><h2>Attendance History</h2><div style="display:flex;"><input type="date" id="range_start" onchange="loadMyAttendance()"><input type="date" id="range_end" style="margin-left:5px;" onchange="loadMyAttendance()"><button class="export-btn" onclick="exportData('MY')">Export Mine</button></div></div>
             <div class="container"><table><thead><tr><th>Date</th><th>In</th><th>Out</th><th>Status</th><th>Hrs</th></tr></thead><tbody id="myAttendanceBody"></tbody></table></div>
         </div>
     </div>
@@ -122,7 +116,6 @@ $coach_id = $_SESSION['employee_id'];
             if(viewId === 'my-attendance') loadMyAttendance();
         }
 
-        // 1. TEAM
         async function loadAttendance() {
             const res = await fetch(`${API}/management/get_team_attendance.php?coach_id=${COACH_ID}`);
             const data = await res.json();
@@ -132,8 +125,6 @@ $coach_id = $_SESSION['employee_id'];
             const f=document.getElementById('coachSearch').value.toLowerCase(), r=document.getElementById('attendanceTable').getElementsByTagName("tr");
             for(let j=1;j<r.length;j++) r[j].style.display = r[j].innerText.toLowerCase().indexOf(f)>-1 ? "" : "none";
         }
-
-        // 2. ENDORSEMENTS
         async function loadLeaves() {
             const res = await fetch(`${API}/management/get_pending_leaves.php?user_id=${COACH_ID}`);
             const data = await res.json();
@@ -151,17 +142,41 @@ $coach_id = $_SESSION['employee_id'];
             type === 'leave' ? loadLeaves() : loadOT();
         }
 
-        // 3. MY REQUESTS
         async function loadMyRequests() {
+            const url = `${API}/users/get_my_request_history.php?employee_id=${COACH_ID}`;
             try {
-                const res = await fetch(`${API}/users/get_my_requests.php?employee_id=${COACH_ID}`);
+                const res = await fetch(url);
                 const data = await res.json();
-                document.getElementById("myLeaveLogs").innerHTML = data.leaves.length ? data.leaves.map(l => `<tr><td>${l.leave_type}</td><td>${l.start_date} to ${l.end_date}</td><td>${l.reason}</td><td><span class="status-pill status-${l.status}">${l.status}</span></td><td>${l.created_at}</td></tr>`).join('') : "<tr><td colspan='5'>No leaves.</td></tr>";
-                document.getElementById("myOTLogs").innerHTML = data.overtime.length ? data.overtime.map(o => `<tr><td>${o.ot_type}</td><td>${o.start_time} to ${o.end_time}</td><td>${o.purpose}</td><td><span class="status-pill status-${o.status}">${o.status}</span></td><td>${o.created_at}</td></tr>`).join('') : "<tr><td colspan='5'>No OT.</td></tr>";
+                const leaves = data.filter(item => item.type === 'Leave');
+                const overtime = data.filter(item => item.type === 'Overtime');
+
+                const getEndorser = (item) => {
+                    if (item.coach_first) return `<span style="color:#d35400; font-weight:600;">${item.coach_first} ${item.coach_last}</span>`;
+                    if (item.status === 'Pending' && item.type === 'Leave') return `<span style="color:#999; font-style:italic; font-size:11px;">Pending...</span>`;
+                    return '<span style="color:#ccc;">-</span>';
+                };
+                const getApprover = (item) => {
+                    if (item.admin_first) return `<span style="color:#27ae60; font-weight:600;">${item.admin_first} ${item.admin_last}</span>`;
+                    if (item.status === 'Endorsed') return `<span style="color:#999; font-style:italic; font-size:11px;">Pending...</span>`;
+                    if (item.status === 'Denied') return `<span style="color:red; font-size:11px;">Denied</span>`;
+                    return '<span style="color:#ccc;">-</span>';
+                };
+
+                const renderRow = (item) => `<tr>
+                    <td>${item.sub_type}</td>
+                    <td>${item.start_date} <br><span style="font-size:11px; color:#888;">to</span><br> ${item.end_date}</td>
+                    <td>${item.reason}</td>
+                    <td><span class="status-pill status-${item.status}">${item.status}</span></td>
+                    <td style="font-size:12px; color:#888;">${item.created_at}</td>
+                    <td style="font-size:13px;">${getEndorser(item)}</td>
+                    <td style="font-size:13px;">${getApprover(item)}</td>
+                </tr>`;
+
+                document.getElementById("myLeaveLogs").innerHTML = leaves.length ? leaves.map(renderRow).join('') : "<tr><td colspan='7' style='text-align:center'>No leaves.</td></tr>";
+                document.getElementById("myOTLogs").innerHTML = overtime.length ? overtime.map(renderRow).join('') : "<tr><td colspan='7' style='text-align:center'>No overtime.</td></tr>";
             } catch(e) { console.error(e); }
         }
 
-        // 4. COMMON
         function exportData(mode) { window.location.href = `${API}/export/export_csv.php?mode=${mode}&start=${document.getElementById(mode==='TEAM'?'t_start':'range_start').value}&end=${document.getElementById(mode==='TEAM'?'t_end':'range_end').value}&coach_id=${COACH_ID}`; }
         async function loadMyAttendance() { const r = await fetch(`${API}/users/get_my_attendance.php?employee_id=${COACH_ID}&start_date=${document.getElementById('range_start').value}&end_date=${document.getElementById('range_end').value}`); const d = await r.json(); document.getElementById('myAttendanceBody').innerHTML = d.map(x => `<tr><td>${x.attendance_date}</td><td>${x.time_in||'--'}</td><td>${x.time_out||'--'}</td><td>${x.attendance_status}</td><td>${x.total_hours||0}</td></tr>`).join(''); }
         
