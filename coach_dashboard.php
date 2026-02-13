@@ -42,12 +42,14 @@ $coach_id = $_SESSION['employee_id'];
         textarea { grid-column: span 2; }
         .submit-btn { width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; background: var(--accent-blue); }
         .export-btn { background: #27ae60; border: none; padding: 8px 15px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold; font-size: 13px; margin-left: 10px; }
-        .readonly-field { background: #eee; color: #777; cursor: not-allowed; }
+        .action-icon { cursor: pointer; font-size: 18px; margin-right: 10px; transition:0.2s; }
+        .action-icon:hover { transform: scale(1.2); }
         .modal-box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 400px; animation: fadeIn 0.3s; }
     </style>
 </head>
 <body>
     <input type="hidden" id="coach_id" value="<?php echo $coach_id; ?>">
+    <input type="hidden" id="current_view_id" value="">
 
     <div class="sidebar">
         <div class="logo">iREPLY</div>
@@ -62,8 +64,14 @@ $coach_id = $_SESSION['employee_id'];
 
     <div class="main-content">
         <div id="team-view" class="view-content active-view">
-            <div class="header"><h2>👥 Team Members</h2><div style="display:flex; align-items:center;"><input type="text" id="coachSearch" class="search-box" placeholder="Search Member..." onkeyup="filterTable()" style="padding:8px; border-radius:15px; border:none; width:200px;"><button class="export-btn" onclick="exportData('TEAM')">Export Excel</button></div></div>
-            <div class="container"><table id="attendanceTable"><thead><tr><th>Employee Name</th><th>Last Active Date</th><th>Current Status</th></tr></thead><tbody id="attendanceLogs"></tbody></table></div>
+            <div class="header">
+                <h2>👥 Team Members</h2>
+                <div style="display:flex; align-items:center;">
+                    <input type="text" id="coachSearch" class="search-box" placeholder="Search Member..." onkeyup="filterTable()" style="padding:8px; border-radius:15px; border:none; width:200px;">
+                    <button class="export-btn" onclick="exportData('TEAM')">📂 Export Excel</button>
+                </div>
+            </div>
+            <div class="container"><table id="attendanceTable"><thead><tr><th>Employee Name</th><th>Last Active Date</th><th>Current Status</th><th>Actions</th></tr></thead><tbody id="attendanceLogs"></tbody></table></div>
         </div>
 
         <div id="manage-requests" class="view-content">
@@ -73,7 +81,7 @@ $coach_id = $_SESSION['employee_id'];
                 <h3 style="margin-top:30px;">Overtime</h3><table id="otTable"><thead><tr><th>Employee</th><th>Purpose</th><th>Action</th></tr></thead><tbody id="coachOTList"></tbody></table>
                 <h3 style="margin-top:30px; color:#e74c3c;">Attendance Disputes</h3>
                 <table id="disputeTable">
-                    <thead><tr><th>Employee</th><th>Date</th><th>Reason</th><th>Action</th></tr></thead>
+                    <thead><tr><th>Employee</th><th>Type</th><th>Reason</th><th>Action</th></tr></thead>
                     <tbody id="coachDisputeList"></tbody>
                 </table>
             </div>
@@ -84,7 +92,7 @@ $coach_id = $_SESSION['employee_id'];
             <div class="container">
                 <div class="form-card"><h3>📝 Leave</h3><form id="leaveForm" class="form-grid"><select id="l_type"><option>Sick Leave</option><option>Vacation Leave</option></select><div></div><input type="date" id="l_start"><input type="date" id="l_end"><textarea id="l_reason" placeholder="Reason..."></textarea><button type="button" class="submit-btn" onclick="submitRequest('leave')">Submit</button></form></div>
                 <div class="form-card" style="border-left: 5px solid #27ae60;"><h3>⏰ Overtime</h3><form id="otForm" class="form-grid"><select id="ot_type"><option>Regular Overtime</option><option>Duty on Rest Day</option></select><div></div><input type="datetime-local" id="ot_start"><input type="datetime-local" id="ot_end"><textarea id="ot_purpose" placeholder="Purpose..."></textarea><button type="button" class="submit-btn" style="background:#27ae60;" onclick="submitRequest('ot')">Submit</button></form></div>
-                <div class="form-card" style="border-left: 5px solid #e74c3c;"><h3 style="color: #e74c3c;">Attendance Dispute</h3><form id="disputeForm" class="form-grid"><input type="text" value="Self-Filing" class="readonly-field" readonly><div></div><div style="grid-column: span 2;"><label style="font-size:12px; font-weight:bold;">Date of Incident:</label><input type="date" id="d_date"></div><textarea id="d_reason" placeholder="Explain the dispute..." rows="3"></textarea><button type="button" class="submit-btn" style="background:#e74c3c;" onclick="submitRequest('dispute')">Submit Dispute</button></form></div>
+                <div class="form-card" style="border-left: 5px solid #e74c3c;"><h3 style="color: #e74c3c;">Attendance Dispute</h3><form id="disputeForm" class="form-grid"><input type="text" value="Self-Filing" class="readonly-field" readonly><select id="d_type" required><option value="" disabled selected>Select Dispute Type</option><option>Forgot Time In/Out</option><option>System Error</option><option>Official Business</option><option>Incorrect Status</option><option>Breaktime</option><option>Lunch Break</option></select><div style="grid-column: span 2;"><label style="font-size:12px; font-weight:bold;">Date of Incident:</label><input type="date" id="d_date"></div><textarea id="d_reason" placeholder="Explain the dispute..." rows="3"></textarea><button type="button" class="submit-btn" style="background:#e74c3c;" onclick="submitRequest('dispute')">Submit Dispute</button></form></div>
             </div>
         </div>
 
@@ -93,25 +101,37 @@ $coach_id = $_SESSION['employee_id'];
             <div class="container">
                 <h3 style="color:#666;">My Leave Requests</h3><table><thead><tr><th>Type</th><th>Date Range</th><th>Reason</th><th>Status</th><th>Filed On</th><th>Approved By</th></tr></thead><tbody id="myLeaveLogs"></tbody></table>
                 <h3 style="color:#666;">My Overtime Requests</h3><table><thead><tr><th>Type</th><th>Time Range</th><th>Purpose</th><th>Status</th><th>Filed On</th><th>Approved By</th></tr></thead><tbody id="myOTLogs"></tbody></table>
+                <h3 style="color:#666;">My Disputes</h3><table><thead><tr><th>Type</th><th>Date</th><th>Reason</th><th>Status</th><th>Filed On</th></tr></thead><tbody id="myDisputeLogs"></tbody></table>
             </div>
         </div>
 
-        <div id="my-attendance" class="view-content"><div class="header"><h2>Attendance History</h2><div style="display:flex;"><input type="date" id="range_start" onchange="loadMyAttendance()"><input type="date" id="range_end" style="margin-left:5px;" onchange="loadMyAttendance()"><button class="export-btn" onclick="exportData('MY')">Export Excel</button></div></div><div class="container"><table><thead><tr><th>Date</th><th>In</th><th>Out</th><th>Status</th><th>Hrs</th></tr></thead><tbody id="myAttendanceBody"></tbody></table></div></div>
-    </div>
-
-    <div id="disputeModal" class="modal">
-        <div class="modal-box">
-            <div class="modal-header"><div class="modal-title">Resolve Dispute</div></div>
-            <div id="disputeModalContent" style="padding:15px; font-size:14px; background:#f9f9f9; margin-bottom:10px;"></div>
-            <label style="display:block; margin-bottom:5px; font-weight:bold;">Set Correct Status:</label>
-            <select id="newDisputeStatus" style="width:100%; padding:10px; margin-bottom:20px;"><option value="Present">Present</option><option value="Late">Late</option><option value="Absent">Absent</option><option value="Overtime">Overtime</option><option value="On Leave">On Leave</option><option value="Duty on Rest Day">Duty on Rest Day</option></select>
-            <input type="hidden" id="currentDisputeId">
-            <button onclick="confirmDispute()" style="width:100%; padding:10px; background:#27ae60; color:white; border:none; border-radius:5px; cursor:pointer;">Confirm & Approve</button>
-            <a onclick="closeDisputeModal()" style="display:block; width:100%; text-align:center; margin-top:10px; cursor:pointer; color:#666;">Cancel</a>
+        <div id="my-attendance" class="view-content">
+            <div class="header">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button class="export-btn" onclick="exportData('MY')">📂 Export Excel</button>
+                    <h2 style="margin:0;">Attendance History</h2>
+                </div>
+                <div style="display:flex;"><input type="date" id="range_start" onchange="loadMyAttendance()"><input type="date" id="range_end" style="margin-left:5px;" onchange="loadMyAttendance()"></div>
+            </div>
+            <div class="container"><table><thead><tr><th>Date</th><th>In</th><th>Out</th><th>Status</th><th>Hrs</th></tr></thead><tbody id="myAttendanceBody"></tbody></table></div>
         </div>
     </div>
 
-    <div id="historyModal" class="modal"><div class="modal-content"><div class="modal-header"><div class="modal-title" id="modalTitle">Employee History</div><span class="close-btn" onclick="closeModal()">×</span></div><div class="modal-body"><table class="history-table"><thead><tr><th>Date</th><th>Status</th><th>Time In</th><th>Time Out</th><th>Lunch Break</th><th>Break Time</th><th>Hours Worked</th><th>Overtime</th></tr></thead><tbody id="modalHistoryBody"></tbody></table></div><div style="padding:10px; background:#fff; text-align:right; border-top:1px solid #ddd; color:#999; font-size:11px;">Total Hours: <span id="totalHoursDisplay">0.00</span></div></div></div>
+    <div id="disputeModal" class="modal"><div class="modal-box"><div class="modal-header"><div class="modal-title">Resolve Dispute</div></div><div id="disputeModalContent" style="padding:15px; font-size:14px; background:#f9f9f9; margin-bottom:10px;"></div><label style="display:block; margin-bottom:5px; font-weight:bold;">Set Correct Status:</label><select id="newDisputeStatus" style="width:100%; padding:10px; margin-bottom:20px;"><option value="Present">Present</option><option value="Late">Late</option><option value="Absent">Absent</option><option value="Overtime">Overtime</option><option value="On Leave">On Leave</option><option value="Duty on Rest Day">Duty on Rest Day</option></select><input type="hidden" id="currentDisputeId"><button onclick="confirmDispute()" style="width:100%; padding:10px; background:#27ae60; color:white; border:none; border-radius:5px; cursor:pointer;">Confirm & Approve</button><a onclick="closeDisputeModal()" style="display:block; width:100%; text-align:center; margin-top:10px; cursor:pointer;">Cancel</a></div></div>
+    
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">Employee History</div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button class="export-btn" onclick="exportCurrentModalUser()">Export Excel</button>
+                    <span class="close-btn" onclick="closeModal()">×</span>
+                </div>
+            </div>
+            <div class="modal-body"><table class="history-table"><thead><tr><th>Date</th><th>Status</th><th>Time In</th><th>Time Out</th><th>Lunch Break</th><th>Break Time</th><th>Hours Worked</th><th>Overtime</th></tr></thead><tbody id="modalHistoryBody"></tbody></table></div>
+            <div style="padding:10px; background:#fff; text-align:right; border-top:1px solid #ddd; color:#999; font-size:11px;">Total Hours: <span id="totalHoursDisplay">0.00</span></div>
+        </div>
+    </div>
 
     <script>
         const API = "<?php echo $api_base_url; ?>";
@@ -131,7 +151,16 @@ $coach_id = $_SESSION['employee_id'];
         async function loadAttendance() {
             const res = await fetch(`${API}/management/get_team_attendance.php?coach_id=${COACH_ID}`);
             const data = await res.json();
-            document.getElementById('attendanceLogs').innerHTML = data.map(log => `<tr><td style="padding:15px;"><span class="clickable-name" onclick="viewMemberHistory(${log.employee_id}, '${log.first_name}')">${log.first_name} ${log.last_name}</span></td><td>${log.latest_date||'-'}</td><td>${log.latest_status||'-'}</td></tr>`).join('');
+            document.getElementById('attendanceLogs').innerHTML = data.map(log => `
+                <tr>
+                    <td style="padding:15px;"><span class="clickable-name" onclick="viewMemberHistory(${log.employee_id}, '${log.first_name} ${log.last_name}')">${log.first_name} ${log.last_name}</span></td>
+                    <td>${log.latest_date||'-'}</td>
+                    <td><span class="status-pill status-${(log.latest_status||'').replace(/\s/g,'')}">${log.latest_status||'-'}</span></td>
+                    <td>
+                        <span class="action-icon" style="color:#3498db;" onclick="viewMemberHistory(${log.employee_id}, '${log.first_name}')">👁️</span>
+                        <span class="action-icon" style="color:#27ae60;" onclick="exportSingleEmployee(${log.employee_id})">📥</span>
+                    </td>
+                </tr>`).join('');
         }
 
         async function loadLeaves() {
@@ -144,11 +173,10 @@ $coach_id = $_SESSION['employee_id'];
             const data = await res.json();
             document.getElementById('coachOTList').innerHTML = data.map(item => `<tr><td><strong>${item.first_name} ${item.last_name}</strong></td><td>"${item.purpose}"</td><td style="cursor:pointer; color:green;" onclick="endorse(${item.ot_id}, 'ot', 'ENDORSE')">✔</td><td style="cursor:pointer; color:red;" onclick="endorse(${item.ot_id}, 'ot', 'DENY')">❌</td></tr>`).join('');
         }
-        
         async function loadDisputes() {
             const res = await fetch(`${API}/management/get_pending_disputes.php?coach_id=${COACH_ID}`);
             const data = await res.json();
-            document.getElementById('coachDisputeList').innerHTML = data.map(item => `<tr><td><strong>${item.first_name} ${item.last_name}</strong></td><td>${item.dispute_date}</td><td>${item.reason}</td><td><button onclick="openDisputeModal(${item.dispute_id}, '${item.first_name}', '${item.dispute_date}')" style="background:#27ae60; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Review</button> <span class="action-btn" style="color:red; margin-left:10px;" onclick="denyDispute(${item.dispute_id})">❌</span></td></tr>`).join('');
+            document.getElementById('coachDisputeList').innerHTML = data.map(item => `<tr><td><strong>${item.first_name} ${item.last_name}</strong></td><td>${item.dispute_type}</td><td>${item.reason}</td><td><button onclick="openDisputeModal(${item.dispute_id}, '${item.first_name}', '${item.dispute_date}')" style="background:#27ae60; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Review</button> <span class="action-btn" style="color:red; margin-left:10px;" onclick="denyDispute(${item.dispute_id})">❌</span></td></tr>`).join('');
         }
 
         function openDisputeModal(id, name, date) {
@@ -157,14 +185,13 @@ $coach_id = $_SESSION['employee_id'];
             document.getElementById('disputeModal').style.display = 'flex';
         }
         function closeDisputeModal() { document.getElementById('disputeModal').style.display = 'none'; }
-
+        
         async function confirmDispute() {
             const id = document.getElementById('currentDisputeId').value;
             const newStatus = document.getElementById('newDisputeStatus').value;
             await fetch(`${API}/management/resolve_dispute.php`, { method: 'POST', body: JSON.stringify({ dispute_id: id, action: 'APPROVE', new_status: newStatus }) });
             closeDisputeModal(); loadDisputes();
         }
-
         async function denyDispute(id) {
             if(!confirm("Deny this dispute?")) return;
             await fetch(`${API}/management/resolve_dispute.php`, { method: 'POST', body: JSON.stringify({ dispute_id: id, action: 'DENY' }) });
@@ -182,6 +209,7 @@ $coach_id = $_SESSION['employee_id'];
 
         async function viewMemberHistory(empId, name) {
             document.getElementById('modalTitle').innerText = `${name} - History`;
+            document.getElementById('current_view_id').value = empId; // Store ID for export
             document.getElementById('historyModal').style.display = 'flex';
             const res = await fetch(`${API}/management/get_member_attendance.php?employee_id=${empId}`);
             const data = await res.json();
@@ -200,6 +228,12 @@ $coach_id = $_SESSION['employee_id'];
             for(let j=1;j<r.length;j++) r[j].style.display = r[j].innerText.toLowerCase().indexOf(f)>-1 ? "" : "none";
         }
         function exportData(mode) { window.location.href = `${API}/export/export_excel.php?mode=${mode}&start=${document.getElementById('range_start').value}&end=${document.getElementById('range_end').value}&coach_id=${COACH_ID}`; }
+        function exportSingleEmployee(empId) { window.location.href = `${API}/export/export_excel.php?mode=SINGLE&employee_id=${empId}`; }
+        function exportCurrentModalUser() { 
+            const id = document.getElementById('current_view_id').value;
+            if(id) exportSingleEmployee(id); 
+        }
+
         async function loadMyAttendance() { const r = await fetch(`${API}/users/get_my_attendance.php?employee_id=${COACH_ID}&start_date=${document.getElementById('range_start').value}&end_date=${document.getElementById('range_end').value}`); const d = await r.json(); document.getElementById('myAttendanceBody').innerHTML = d.map(x => `<tr><td>${x.attendance_date}</td><td>${x.time_in||'--'}</td><td>${x.time_out||'--'}</td><td>${x.attendance_status}</td><td>${x.total_hours||0}</td></tr>`).join(''); }
         
         async function loadMyRequests() {
@@ -207,24 +241,25 @@ $coach_id = $_SESSION['employee_id'];
             const data = await res.json();
             const leaves = data.filter(item => item.type === 'Leave');
             const overtime = data.filter(item => item.type === 'Overtime');
+            const disputes = data.filter(item => item.type === 'Dispute');
             const getApprover = (item) => item.admin_first ? `<span style="color:#27ae60; font-weight:600;">${item.admin_first} ${item.admin_last}</span>` : '<span style="color:#ccc;">-</span>';
             const renderRow = (item) => `<tr><td>${item.sub_type}</td><td>${item.start_date}<br>${item.end_date}</td><td>${item.reason}</td><td><span class="status-pill status-${item.status}">${item.status}</span></td><td>${item.created_at}</td><td>${getApprover(item)}</td></tr>`;
+            const renderDisp = (item) => `<tr><td>${item.sub_type}</td><td>${item.start_date}</td><td>${item.reason}</td><td><span class="status-pill status-${item.status}">${item.status}</span></td><td>${item.created_at}</td></tr>`;
+            
             document.getElementById("myLeaveLogs").innerHTML = leaves.map(renderRow).join('');
             document.getElementById("myOTLogs").innerHTML = overtime.map(renderRow).join('');
+            document.getElementById("myDisputeLogs").innerHTML = disputes.map(renderDisp).join('');
         }
 
         async function submitRequest(type) {
             let form = {};
             if (type === 'leave') form = { employee_id: COACH_ID, leave_type: document.getElementById('l_type').value, start_date: document.getElementById('l_start').value, end_date: document.getElementById('l_end').value, reason: document.getElementById('l_reason').value, agreement_1:1, agreement_2:1 };
             else if (type === 'ot') {
-                const start = new Date(document.getElementById('ot_start').value);
-                const end = new Date(document.getElementById('ot_end').value);
-                const diffMs = end - start;
-                const diffHrs = diffMs / (1000 * 60 * 60);
-                if (diffHrs > 2) { alert("Overtime cannot exceed 2 hours."); return; }
+                const start = new Date(document.getElementById('ot_start').value); const end = new Date(document.getElementById('ot_end').value);
+                const diffHrs = (end - start) / (1000 * 60 * 60); if (diffHrs > 2) { alert("Overtime cannot exceed 2 hours."); return; }
                 form = { employee_id: COACH_ID, ot_type: document.getElementById('ot_type').value, start_time: document.getElementById('ot_start').value, end_time: document.getElementById('ot_end').value, purpose: document.getElementById('ot_purpose').value, agreement_1:1, agreement_2:1 };
             }
-            else if (type === 'dispute') form = { employee_id: COACH_ID, date: document.getElementById('d_date').value, reason: document.getElementById('d_reason').value };
+            else if (type === 'dispute') form = { employee_id: COACH_ID, date: document.getElementById('d_date').value, dispute_type: document.getElementById('d_type').value, reason: document.getElementById('d_reason').value };
 
             const endpoint = type === 'dispute' ? '/users/file_dispute.php' : `/users/file_${type}.php`;
             const res = await fetch(`${API}${endpoint}`, { method:'POST', body:JSON.stringify(form) });

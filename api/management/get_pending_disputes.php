@@ -14,6 +14,7 @@ try {
     $sql = "SELECT 
                 d.dispute_id,
                 d.dispute_date,
+                d.dispute_type,
                 d.reason,
                 d.status,
                 e.first_name, 
@@ -23,11 +24,12 @@ try {
             JOIN team_members tm ON e.employee_id = tm.employee_id
             JOIN team_cluster tc ON tm.team_id = tc.team_id
             WHERE d.status = 'Pending' 
-            AND tc.coach_id = ?
+            AND tc.coach_id = ? 
+            AND d.employee_id != ? -- 🛑 SECURITY: Coach cannot approve own dispute
             ORDER BY d.created_at ASC";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$coach_id]);
+    $stmt->execute([$coach_id, $coach_id]); // Pass coach_id twice
     echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
 
 } catch (Exception $e) {

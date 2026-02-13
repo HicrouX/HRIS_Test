@@ -34,7 +34,7 @@ try {
             
             UNION ALL
             
-            -- 2. OVERTIME
+            // 2. OVERTIME
             SELECT 
                 'Overtime' as type,
                 ot.ot_type as sub_type,
@@ -50,11 +50,29 @@ try {
             FROM overtime_requests ot
             LEFT JOIN employees a_emp ON ot.approved_by = a_emp.employee_id
             WHERE ot.employee_id = ?
+
+            UNION ALL
+
+            // 3. DISPUTES (New)
+            SELECT 
+                'Dispute' as type,
+                d.dispute_type as sub_type,
+                d.dispute_date as start_date,
+                d.dispute_date as end_date,
+                d.reason,
+                d.status,
+                d.created_at,
+                NULL as coach_first,
+                NULL as coach_last,
+                NULL as admin_first,
+                NULL as admin_last
+            FROM attendance_disputes d
+            WHERE d.employee_id = ?
             
             ORDER BY created_at DESC";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$emp_id, $emp_id]);
+    $stmt->execute([$emp_id, $emp_id, $emp_id]);
     echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
 
 } catch (Exception $e) {

@@ -14,8 +14,7 @@ $emp_id = $_SESSION['employee_id'];
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>iREPLY - Employee Portal</title>
+    <meta charset="UTF-8"><title>iREPLY - Employee Portal</title>
     <style>
         :root { --primary-blue: #1e4d8c; --accent-blue: #3498db; --bg-dark: #1a1a1a; --text-gray: #666; }
         body { font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; margin: 0; display: flex; height: 100vh; background: var(--bg-dark); color: #333; overflow: hidden; }
@@ -61,12 +60,14 @@ $emp_id = $_SESSION['employee_id'];
     <div class="main-content">
         <div id="attendance-view" class="content-view view-active">
             <div class="view-header">
-                <h2 style="margin:0; font-weight: 500;">Attendance History</h2>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button class="export-btn" onclick="exportData()">Export Excel</button>
+                    <h2 style="margin:0; font-weight: 500;">Attendance History</h2>
+                </div>
                 <div class="date-range-container">
                     <input type="date" id="range_start" class="date-input-small" onchange="loadMyAttendance()">
                     <span style="opacity: 0.5;">to</span>
                     <input type="date" id="range_end" class="date-input-small" onchange="loadMyAttendance()">
-                    <button class="export-btn" onclick="exportData()">Export Excel</button>
                 </div>
             </div>
             <div class="table-wrapper">
@@ -82,8 +83,10 @@ $emp_id = $_SESSION['employee_id'];
             <div class="table-wrapper">
                 <h3 style="color:#666;">Leave Requests</h3>
                 <table><thead><tr><th>Type</th><th>Date Range</th><th>Reason</th><th>Status</th><th>Filed On</th><th>Endorsed By</th><th>Approved By</th></tr></thead><tbody id="myLeaveLogs"></tbody></table>
-                <h3 style="color:#666; margin-top:40px;">Overtime Requests</h3>
+                <h3 style="color:#666;">Overtime Requests</h3>
                 <table><thead><tr><th>Type</th><th>Time Range</th><th>Purpose</th><th>Status</th><th>Filed On</th><th>Endorsed By</th><th>Approved By</th></tr></thead><tbody id="myOTLogs"></tbody></table>
+                <h3 style="color:#666;">My Disputes</h3>
+                <table><thead><tr><th>Type</th><th>Date</th><th>Reason</th><th>Status</th><th>Filed On</th></tr></thead><tbody id="myDisputeLogs"></tbody></table>
             </div>
         </div>
 
@@ -116,7 +119,7 @@ $emp_id = $_SESSION['employee_id'];
                     <form id="disputeForm" class="form-grid" style="grid-template-columns: 1fr 1fr;">
                         <input type="text" value="Cluster: Auto-Detected" class="readonly-field" readonly>
                         <input type="text" value="Coach: Auto-Detected" class="readonly-field" readonly>
-                        
+                        <select id="d_type" required><option value="" disabled selected>Select Dispute Type</option><option>Forgot Time In/Out</option><option>System Error</option><option>Official Business</option><option>Incorrect Status</option><option>Breaktime</option><option>Lunch Break</option></select>
                         <div style="grid-column: span 2;">
                             <label style="font-size:12px; font-weight:bold;">Date of Incident:</label>
                             <input type="date" id="d_date" required>
@@ -155,11 +158,15 @@ $emp_id = $_SESSION['employee_id'];
             const data = await res.json();
             const leaves = data.filter(item => item.type === 'Leave');
             const overtime = data.filter(item => item.type === 'Overtime');
+            const disputes = data.filter(item => item.type === 'Dispute');
             const getEndorser = (item) => item.coach_first ? `<span style="color:#d35400; font-weight:600;">${item.coach_first} ${item.coach_last}</span>` : '<span style="color:#ccc;">-</span>';
             const getApprover = (item) => item.admin_first ? `<span style="color:#27ae60; font-weight:600;">${item.admin_first} ${item.admin_last}</span>` : '<span style="color:#ccc;">-</span>';
             const renderRow = (item) => `<tr><td>${item.sub_type}</td><td>${item.start_date}<br>${item.end_date}</td><td>${item.reason}</td><td><span class="status-pill status-${item.status}">${item.status}</span></td><td>${item.created_at}</td><td>${getEndorser(item)}</td><td>${getApprover(item)}</td></tr>`;
+            const renderDisp = (item) => `<tr><td>${item.sub_type}</td><td>${item.start_date}</td><td>${item.reason}</td><td><span class="status-pill status-${item.status}">${item.status}</span></td><td>${item.created_at}</td></tr>`;
+            
             document.getElementById("myLeaveLogs").innerHTML = leaves.map(renderRow).join('');
             document.getElementById("myOTLogs").innerHTML = overtime.map(renderRow).join('');
+            document.getElementById("myDisputeLogs").innerHTML = disputes.map(renderDisp).join('');
         }
 
         async function submitRequest(type) {
@@ -179,7 +186,8 @@ $emp_id = $_SESSION['employee_id'];
                 payload = { employee_id: EMP_ID, ot_type: document.getElementById('ot_type').value, start_time: document.getElementById('ot_start').value, end_time: document.getElementById('ot_end').value, purpose: document.getElementById('ot_purpose').value, agreement_1: 1, agreement_2: 1 };
             } else if (type === 'dispute') {
                 endpoint = '/users/file_dispute.php'; formId = 'disputeForm';
-                payload = { employee_id: EMP_ID, date: document.getElementById('d_date').value, reason: document.getElementById('d_reason').value };
+                // 🆕 New Dropdown Value Included
+                payload = { employee_id: EMP_ID, date: document.getElementById('d_date').value, dispute_type: document.getElementById('d_type').value, reason: document.getElementById('d_reason').value };
             }
 
             try {

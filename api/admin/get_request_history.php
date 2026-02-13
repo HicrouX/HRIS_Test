@@ -6,7 +6,6 @@ header("Content-Type: application/json; charset=UTF-8");
 require_once '../config/db.php';
 require_once '../middleware/auth.php';
 
-// Ensure only Admin/Super Admin can access
 verifyAccess([3, 4]);
 
 $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-01');
@@ -29,12 +28,8 @@ try {
             JOIN employees e ON l.employee_id = e.employee_id
             WHERE (l.start_date BETWEEN ? AND ?)";
     
-    // Add Status Filter for Leaves
     $params = [$start_date, $end_date];
-    if ($status !== 'ALL') {
-        $sql .= " AND l.status = ?";
-        $params[] = $status;
-    }
+    if ($status !== 'ALL') { $sql .= " AND l.status = ?"; $params[] = $status; }
 
     $sql .= " UNION ALL ";
 
@@ -53,21 +48,36 @@ try {
             JOIN employees e ON o.employee_id = e.employee_id
             WHERE (DATE(o.start_time) BETWEEN ? AND ?)";
 
-    // Add Status Filter for Overtime
     $params[] = $start_date;
     $params[] = $end_date;
-    if ($status !== 'ALL') {
-        $sql .= " AND o.status = ?";
-        $params[] = $status;
-    }
+    if ($status !== 'ALL') { $sql .= " AND o.status = ?"; $params[] = $status; }
+
+    $sql .= " UNION ALL ";
+
+    // 3. DISPUTE QUERY (New)
+    $sql .= "SELECT 
+                d.dispute_id as id,
+                'Dispute' as category,
+                d.dispute_type as type,
+                d.dispute_date as date_start,
+                d.dispute_date as date_end, -- Same day
+                d.reason as details,
+                d.status,
+                d.created_at,
+                CONCAT(e.first_name, ' ', e.last_name) as employee_name
+            FROM attendance_disputes d
+            JOIN employees e ON d.employee_id = e.employee_id
+            WHERE (d.dispute_date BETWEEN ? AND ?)";
+
+    $params[] = $start_date;
+    $params[] = $end_date;
+    if ($status !== 'ALL') { $sql .= " AND d.status = ?"; $params[] = $status; }
 
     $sql .= " ORDER BY created_at DESC";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
-    $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    echo json_encode($data);
+    echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
 
 } catch (Exception $e) {
     http_response_code(500);
