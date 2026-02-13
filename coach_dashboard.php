@@ -107,10 +107,7 @@ $coach_id = $_SESSION['employee_id'];
 
         <div id="my-attendance" class="view-content">
             <div class="header">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <button class="export-btn" onclick="exportData('MY')">📂 Export Excel</button>
-                    <h2 style="margin:0;">Attendance History</h2>
-                </div>
+                <div style="display:flex; align-items:center; gap:10px;"><button class="export-btn" onclick="exportData('MY')">📂 Export Excel</button><h2 style="margin:0;">Attendance History</h2></div>
                 <div style="display:flex;"><input type="date" id="range_start" onchange="loadMyAttendance()"><input type="date" id="range_end" style="margin-left:5px;" onchange="loadMyAttendance()"></div>
             </div>
             <div class="container"><table><thead><tr><th>Date</th><th>In</th><th>Out</th><th>Status</th><th>Hrs</th></tr></thead><tbody id="myAttendanceBody"></tbody></table></div>
@@ -119,19 +116,7 @@ $coach_id = $_SESSION['employee_id'];
 
     <div id="disputeModal" class="modal"><div class="modal-box"><div class="modal-header"><div class="modal-title">Resolve Dispute</div></div><div id="disputeModalContent" style="padding:15px; font-size:14px; background:#f9f9f9; margin-bottom:10px;"></div><label style="display:block; margin-bottom:5px; font-weight:bold;">Set Correct Status:</label><select id="newDisputeStatus" style="width:100%; padding:10px; margin-bottom:20px;"><option value="Present">Present</option><option value="Late">Late</option><option value="Absent">Absent</option><option value="Overtime">Overtime</option><option value="On Leave">On Leave</option><option value="Duty on Rest Day">Duty on Rest Day</option></select><input type="hidden" id="currentDisputeId"><button onclick="confirmDispute()" style="width:100%; padding:10px; background:#27ae60; color:white; border:none; border-radius:5px; cursor:pointer;">Confirm & Approve</button><a onclick="closeDisputeModal()" style="display:block; width:100%; text-align:center; margin-top:10px; cursor:pointer;">Cancel</a></div></div>
     
-    <div id="historyModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title" id="modalTitle">Employee History</div>
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <button class="export-btn" onclick="exportCurrentModalUser()">Export Excel</button>
-                    <span class="close-btn" onclick="closeModal()">×</span>
-                </div>
-            </div>
-            <div class="modal-body"><table class="history-table"><thead><tr><th>Date</th><th>Status</th><th>Time In</th><th>Time Out</th><th>Lunch Break</th><th>Break Time</th><th>Hours Worked</th><th>Overtime</th></tr></thead><tbody id="modalHistoryBody"></tbody></table></div>
-            <div style="padding:10px; background:#fff; text-align:right; border-top:1px solid #ddd; color:#999; font-size:11px;">Total Hours: <span id="totalHoursDisplay">0.00</span></div>
-        </div>
-    </div>
+    <div id="historyModal" class="modal"><div class="modal-content"><div class="modal-header"><div class="modal-title" id="modalTitle">Employee History</div><div style="display:flex; align-items:center; gap:10px;"><button class="export-btn" onclick="exportCurrentModalUser()">Export Excel</button><span class="close-btn" onclick="closeModal()">×</span></div></div><div class="modal-body"><table class="history-table"><thead><tr><th>Date</th><th>Status</th><th>Time In</th><th>Time Out</th><th>Lunch Break</th><th>Break Time</th><th>Hours Worked</th><th>Overtime</th></tr></thead><tbody id="modalHistoryBody"></tbody></table></div><div style="padding:10px; background:#fff; text-align:right; border-top:1px solid #ddd; color:#999; font-size:11px;">Total Hours: <span id="totalHoursDisplay">0.00</span></div></div></div>
 
     <script>
         const API = "<?php echo $api_base_url; ?>";

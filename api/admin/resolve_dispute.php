@@ -6,8 +6,8 @@ header("Content-Type: application/json; charset=UTF-8");
 require_once '../config/db.php';
 require_once '../middleware/auth.php';
 
-// Verify Coach Access (Role 2)
-verifyAccess([2]); 
+// 🔥 ALLOW BOTH COACHES (2) AND ADMINS (3, 4)
+verifyAccess([2, 3, 4]); 
 
 $data = json_decode(file_get_contents("php://input"));
 
@@ -17,25 +17,24 @@ if (empty($data->dispute_id) || empty($data->action)) {
     exit;
 }
 
-// Logic: Coach APPROVES (Finalizes) or DENIES
+// DIRECT ACTION: Approve or Deny
 $status = ($data->action === 'APPROVE') ? 'Approved' : 'Denied';
 
 try {
     $pdo->beginTransaction();
 
-    // 1. Update Dispute Table Status
+    // 1. Update Dispute Status
     $stmt = $pdo->prepare("UPDATE attendance_disputes SET status = ? WHERE dispute_id = ?");
     $stmt->execute([$status, $data->dispute_id]);
 
-    // 2. IF APPROVED: Update the Main Attendance Table
+    // 2. IF APPROVED: Directly Update the Attendance Table
     if ($status === 'Approved' && !empty($data->new_status)) {
-        // Get the dispute details to find Employee & Date
         $get_disp = $pdo->prepare("SELECT employee_id, dispute_date FROM attendance_disputes WHERE dispute_id = ?");
         $get_disp->execute([$data->dispute_id]);
         $dispute = $get_disp->fetch();
 
         if ($dispute) {
-            // Upsert: Update if exists, Insert if not
+            // Update or Insert the new status (Present, Late, etc.)
             $sync = $pdo->prepare("INSERT INTO attendance (employee_id, attendance_date, attendance_status) 
                                    VALUES (?, ?, ?) 
                                    ON DUPLICATE KEY UPDATE attendance_status = ?");
@@ -44,7 +43,7 @@ try {
     }
 
     $pdo->commit();
-    echo json_encode(["success" => "Dispute has been " . strtolower($status) . " and attendance updated."]);
+    echo json_encode(["success" => "Dispute $status and attendance updated."]);
 
 } catch (Exception $e) {
     $pdo->rollBack();
