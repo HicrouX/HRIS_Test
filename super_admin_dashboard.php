@@ -139,7 +139,7 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
         .status-Overtime { background: #e0f2f1; color: #00695c; }
         .status-OnLeave { background: #e1f5fe; color: #0277bd; }
 
-        /* --- UPDATED COACH HIGHLIGHT (DARK BLUE) --- */
+        /* --- COACH HIGHLIGHT (Role 2) - Dark Blue --- */
         .coach-pill {
             background-color: #002D62; /* Dark Blue */
             color: white;              /* White Text */
@@ -153,18 +153,17 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             cursor: pointer;
             transition: opacity 0.2s;
         }
-        .coach-pill:hover {
-            opacity: 0.9;
-        }
+        .coach-pill:hover { opacity: 0.9; }
 
         .btn { padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 11px; text-decoration: none; transition: 0.2s; }
         .btn-edit { background: var(--accent); color: white; }
         .btn-delete { background: var(--danger); color: white; margin-left: 5px; }
         .btn-export { background: var(--success); color: white; }
+        .btn-filter { background: #2c3e50; color: white; margin-right: 5px; }
         .btn-refresh { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4); padding: 5px 12px; border-radius: 15px; }
         .btn-refresh:hover { background: rgba(255,255,255,0.4); }
         
-        .search-input { padding: 8px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: white; width: 160px; font-size: 12px; }
+        .search-input { padding: 8px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: white; width: 140px; font-size: 12px; }
         .search-input option { color: #333; }
 
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
@@ -179,45 +178,85 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
         .readonly-field { background: #eee; cursor: not-allowed; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
         .submit-btn { padding: 10px; width: 100%; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; background: var(--accent); }
 
-        /* --- NEW MODAL FORM STYLES (MATCHES REFERENCE IMAGE) --- */
+        /* --- MODAL FORM STYLES (Horizontal) --- */
         .modal-row { display: flex; align-items: center; margin-bottom: 12px; }
         .modal-row label { width: 90px; font-size: 13px; font-weight: 600; color: #444; }
         .modal-input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; font-family: inherit; }
-        
         .modal-actions { display: flex; gap: 10px; margin-top: 25px; }
-        
-        .btn-save-modal { 
-            background: #3498db; 
-            color: white; 
-            flex: 2; 
-            padding: 10px; 
-            border-radius: 5px; 
-            border: none; 
-            cursor: pointer; 
-            font-weight: bold; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            gap: 5px;
-        }
+        .btn-save-modal { background: #3498db; color: white; flex: 2; padding: 10px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; }
         .btn-save-modal:hover { background: #2980b9; }
-
-        .btn-cancel-modal { 
-            background: #f0f2f5; 
-            color: #333; 
-            flex: 1; 
-            padding: 10px; 
-            border-radius: 5px; 
-            text-decoration: none; 
-            text-align: center; 
-            font-weight: bold; 
-            font-size: 12px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
-            border: 1px solid #ddd;
-        }
+        .btn-cancel-modal { background: #f0f2f5; color: #333; flex: 1; padding: 10px; border-radius: 5px; text-decoration: none; text-align: center; font-weight: bold; font-size: 12px; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; cursor: pointer; }
         .btn-cancel-modal:hover { background: #e4e6eb; }
+
+        /* --- FILTER GRID STYLES --- */
+        .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
+        .filter-option { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #333; cursor: pointer; }
+        .filter-option input { cursor: pointer; }
+
+        /* --- DATE INPUTS FOR HISTORY MODAL --- */
+        .date-filter-input {
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 13px;
+            color: #333;
+            outline: none;
+            background: white;
+        }
+        
+        /* --- HISTORY FILTER DROPDOWN (Fixed Z-Index & Position) --- */
+        .history-filter-container {
+            position: relative;
+            display: inline-block;
+        }
+        .history-filter-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: white;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 10000; /* FIXED: Ensures dropdown appears ON TOP of table */
+            width: 170px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+            text-align: left;
+            margin-top: 5px;
+        }
+        .history-filter-dropdown label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 4px;
+        }
+        .history-filter-dropdown label:hover {
+            background-color: #f5f5f5;
+        }
+
+        /* --- ACTIVE FILTER TAGS (New Feature) --- */
+        .filter-tag {
+            background: #e3f2fd;
+            color: #0d47a1;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            border: 1px solid #90caf9;
+            margin-top: 2px;
+        }
+        .filter-tag span {
+            cursor: pointer;
+            font-weight: bold;
+            color: #c62828;
+            margin-left: 2px;
+        }
+        .filter-tag span:hover {
+            color: #b71c1c;
+        }
     </style>
 </head>
 <body>
@@ -248,14 +287,17 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             <div class="header">
                 <h2>System-Wide Override</h2>
                 <div style="display:flex; align-items:center; gap:8px;">
-                    <select id="filter_role" class="search-input" onchange="loadFullData()" style="cursor:pointer; width:140px;">
-                        <option value="">Show All Roles</option>
+                    <select id="filter_role" class="search-input" onchange="loadFullData()" style="cursor:pointer; width:120px;">
+                        <option value="">All Roles</option>
                         <option value="1">Employees</option>
                         <option value="2">Coaches</option>
                         <option value="3">Admins</option>
                     </select>
                     <input type="date" id="master_start" class="search-input">
                     <input type="date" id="master_end" class="search-input">
+                    
+                    <button class="btn btn-filter" onclick="openFilterModal()">Filter Options ⇩</button>
+
                     <button class="btn btn-export" onclick="exportMasterExcel()">📂 Export</button>
                 </div>
             </div>
@@ -375,39 +417,65 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
         </div>
     </div>
 
-    <div id="disputeModal" class="overlay" style="display:none;">
-        <div class="modal-card">
-            <span class="close-x" onclick="closeModal()">×</span>
-            <h3>Resolve Dispute</h3>
-            <div id="disputeInfo" style="font-size:13px; margin-bottom:15px; background:#f0f4f8; padding:10px; border-radius:6px;"></div>
-            Correction: <select id="resStatus" class="form-group" style="width:100%; padding:10px;"><option value="Present">Present</option><option value="Late">Late</option><option value="Duty on Rest Day">Duty on Rest Day</option></select>
-            <div style="display:flex; gap:10px; margin-bottom:10px;">Adjusted In: <input type="time" id="resIn"> Adjusted Out: <input type="time" id="resOut"></div>
-            <textarea id="resRemarks" placeholder="Internal remarks..."></textarea>
-            <input type="hidden" id="resId">
-            <div style="display:flex; gap:10px; margin-top:15px;">
-                <button onclick="confirmDispute('APPROVE')" class="btn btn-edit" style="flex:2;">Override & Approve</button>
-                <button onclick="closeModal()" class="btn" style="flex:1; background:#eee; color:#333;">Cancel</button>
+    <div id="filterModal" class="overlay" style="display:none;">
+        <div class="modal-card" style="width: 350px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:10px;">
+                <h3 style="margin:0;">Filter by Status</h3>
+                <span class="close-x" onclick="closeFilterModal()">×</span>
+            </div>
+            
+            <div class="filter-grid">
+                <label class="filter-option"><input type="checkbox" class="status-filter" value="Present"> Present</label>
+                <label class="filter-option"><input type="checkbox" class="status-filter" value="Absent"> Absent</label>
+                <label class="filter-option"><input type="checkbox" class="status-filter" value="Late"> Late</label>
+                <label class="filter-option"><input type="checkbox" class="status-filter" value="Tardy"> Tardy</label>
+                <label class="filter-option"><input type="checkbox" class="status-filter" value="On Leave"> On Leave</label>
+                <label class="filter-option"><input type="checkbox" class="status-filter" value="Overtime"> Overtime</label>
+                <label class="filter-option"><input type="checkbox" class="status-filter" value="Undertime"> Undertime</label>
+                <label class="filter-option"><input type="checkbox" class="status-filter" value="Duty on Rest Day"> Duty on Rest Day</label>
+            </div>
+            <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+            <div style="display:flex; gap:10px;">
+                <button class="btn-save-modal" onclick="applyFilters()">Apply Filters</button>
+                <button class="btn-cancel-modal" onclick="clearFilters()">Clear All</button>
             </div>
         </div>
     </div>
 
     <div id="historyModal" class="overlay" style="display:none;">
         <div class="modal-card modal-wide">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:15px;">
-                <h3 id="modalTitle" style="margin:0;">Employee logs</h3>
-                <div style="display:flex; gap:10px; align-items:center;">
-                    <input type="date" id="hist_mod_start" class="btn" style="background:#f8f9fa; color:#333; border:1px solid #ddd;">
-                    <span>to</span>
-                    <input type="date" id="hist_mod_end" class="btn" style="background:#f8f9fa; color:#333; border:1px solid #ddd;">
-                    <button class="btn btn-edit" onclick="fetchMemberHistory()">Filter Logs</button>
-                    <button class="btn btn-export" onclick="exportIndividualExcel()">📂 Individual Export</button>
-                    <span class="close-x" onclick="closeModal()">×</span>
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:15px; margin-bottom:15px;">
+                <h3 id="modalTitle" style="margin:0; font-size:20px;">Employee logs</h3>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="date" id="hist_mod_start" class="date-filter-input">
+                    <span style="font-size:13px; color:#555;">to</span>
+                    <input type="date" id="hist_mod_end" class="date-filter-input">
+                    
+                    <div class="history-filter-container">
+                        <button onclick="toggleHistoryFilterMenu()" style="background:#2c3e50; color:white; border:none; padding:8px 15px; border-radius:5px; font-weight:bold; font-size:12px; cursor:pointer;">Filter Status ⇩</button>
+                        <div id="historyFilterMenu" class="history-filter-dropdown">
+                            <label><input type="checkbox" class="hist-status-cb" value="Present" onchange="applyHistoryFilters()"> Present</label>
+                            <label><input type="checkbox" class="hist-status-cb" value="Absent" onchange="applyHistoryFilters()"> Absent</label>
+                            <label><input type="checkbox" class="hist-status-cb" value="Late" onchange="applyHistoryFilters()"> Late</label>
+                            <label><input type="checkbox" class="hist-status-cb" value="Tardy" onchange="applyHistoryFilters()"> Tardy</label>
+                            <label><input type="checkbox" class="hist-status-cb" value="On Leave" onchange="applyHistoryFilters()"> On Leave</label>
+                            <label><input type="checkbox" class="hist-status-cb" value="Overtime" onchange="applyHistoryFilters()"> Overtime</label>
+                            <label><input type="checkbox" class="hist-status-cb" value="Undertime" onchange="applyHistoryFilters()"> Undertime</label>
+                            <label><input type="checkbox" class="hist-status-cb" value="Duty on Rest Day" onchange="applyHistoryFilters()"> Duty on Rest Day</label>
+                        </div>
+                    </div>
+                    
+                    <div id="activeHistoryFilters" style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;"></div>
+
+                    <button onclick="exportIndividualExcel()" style="background:#27ae60; color:white; border:none; padding:8px 15px; border-radius:5px; font-weight:bold; font-size:12px; cursor:pointer;">📂 Individual Export</button>
+                    <span class="close-x" onclick="closeModal()" style="margin-left:15px; font-size:24px;">×</span>
                 </div>
             </div>
-            <div style="overflow-y:auto; flex:1;">
+            
+            <div style="overflow-y:auto; flex:1; max-height:500px;">
                 <table id="modalHistTable">
                     <thead>
-                        <tr>
+                        <tr style="background:#f9fafb; text-transform:uppercase; font-size:11px; color:#777;">
                             <th onclick="sortTable('modalHistTable',0)">Date ⬍</th>
                             <th>Time In</th>
                             <th>Time Out</th>
@@ -421,7 +489,9 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
                     <tbody id="modalHistoryBody"></tbody>
                 </table>
             </div>
-            <div style="padding:15px; border-top:1px solid #eee; text-align:right;"><strong>Total Period Hours: <span id="totalHrs">0.00</span></strong></div>
+            <div style="padding-top:15px; border-top:1px solid #eee; text-align:right; font-size:14px;">
+                <strong>Total Period Hours: <span id="totalHrs">0.00</span></strong>
+            </div>
         </div>
     </div>
 
@@ -477,10 +547,28 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
     </div>
     <?php endif; ?>
 
+    <div id="disputeModal" class="overlay" style="display:none;">
+        <div class="modal-card">
+            <span class="close-x" onclick="closeModal()">×</span>
+            <h3>Resolve Dispute</h3>
+            <div id="disputeInfo" style="font-size:13px; margin-bottom:15px; background:#f0f4f8; padding:10px; border-radius:6px;"></div>
+            Correction: <select id="resStatus" class="form-group" style="width:100%; padding:10px;"><option value="Present">Present</option><option value="Late">Late</option><option value="Duty on Rest Day">Duty on Rest Day</option></select>
+            <div style="display:flex; gap:10px; margin-bottom:10px;">Adjusted In: <input type="time" id="resIn"> Adjusted Out: <input type="time" id="resOut"></div>
+            <textarea id="resRemarks" placeholder="Internal remarks..."></textarea>
+            <input type="hidden" id="resId">
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button onclick="confirmDispute('APPROVE')" class="btn btn-edit" style="flex:2;">Override & Approve</button>
+                <button onclick="closeModal()" class="btn" style="flex:1; background:#eee; color:#333;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API = "<?php echo $api_base_url; ?>";
         const MY_ID = "<?php echo $user_id; ?>";
         let viewingMemberId = null;
+        let globalMasterData = []; 
+        let activeStatusFilters = [];
 
         function sortTable(tid, n) {
             let table = document.getElementById(tid), tbody = table.tBodies[0], rows = Array.from(tbody.rows);
@@ -511,7 +599,19 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             const s = document.getElementById('master_start').value, e = document.getElementById('master_end').value, role = document.getElementById('filter_role').value;
             const res = await fetch(`${API}/admin/get_master_attendance.php?start_date=${s}&end_date=${e}&role=${role}`);
             const data = await res.json();
-            document.getElementById('masterData').innerHTML = data.map(row => {
+            globalMasterData = data; 
+            renderMasterTable();
+        }
+
+        function renderMasterTable() {
+            let filteredData = globalMasterData;
+            
+            // Client-side filtering for Status
+            if (activeStatusFilters.length > 0) {
+                filteredData = filteredData.filter(row => activeStatusFilters.includes(row.attendance_status));
+            }
+
+            document.getElementById('masterData').innerHTML = filteredData.map(row => {
                 const hasRecord = row.attendance_id != null;
                 const statusDisplay = hasRecord 
                     ? `<span class="pill status-${row.attendance_status.replace(/\s/g,'')}">${row.attendance_status}</span>` 
@@ -521,6 +621,86 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
                     : '<span style="font-size:10px; color:#ccc;">N/A</span>';
                 return `<tr><td><strong>${row.first_name} ${row.last_name}</strong></td><td><span style="font-size:10px; color:#888;">${row.role_name || '-'}</span></td><td>${statusDisplay}</td><td style="text-align:right;">${actions}</td></tr>`;
             }).join('');
+        }
+
+        // --- FILTER MODAL LOGIC (MASTER DASHBOARD) ---
+        function openFilterModal() { document.getElementById('filterModal').style.display = 'flex'; }
+        function closeFilterModal() { document.getElementById('filterModal').style.display = 'none'; }
+        
+        function applyFilters() {
+            const checkboxes = document.querySelectorAll('.status-filter:checked');
+            activeStatusFilters = Array.from(checkboxes).map(cb => cb.value);
+            closeFilterModal();
+            renderMasterTable();
+        }
+
+        function clearFilters() {
+            document.querySelectorAll('.status-filter').forEach(cb => cb.checked = false);
+            activeStatusFilters = [];
+            closeFilterModal();
+            renderMasterTable();
+        }
+
+        // --- HISTORY MODAL FILTER LOGIC (DROPDOWN + TAGS) ---
+        function toggleHistoryFilterMenu() {
+            const menu = document.getElementById('historyFilterMenu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function applyHistoryFilters() {
+            const checkedBoxes = document.querySelectorAll('.hist-status-cb:checked');
+            const selectedStatuses = Array.from(checkedBoxes).map(cb => cb.value.trim());
+            
+            // 1. UPDATE TAGS
+            const tagsContainer = document.getElementById('activeHistoryFilters');
+            tagsContainer.innerHTML = ''; // Clear previous
+            selectedStatuses.forEach(status => {
+                tagsContainer.innerHTML += `
+                    <div class="filter-tag">
+                        ${status} 
+                        <span onclick="removeHistoryFilter('${status}')">✖</span>
+                    </div>`;
+            });
+
+            // 2. FILTER TABLE
+            const tableBody = document.getElementById('modalHistoryBody');
+            const rows = tableBody.getElementsByTagName('tr');
+            let totalHours = 0;
+
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const statusCell = row.cells[6]; // Index 6 is Status Column
+                if (!statusCell) continue;
+                const statusText = statusCell.textContent.trim();
+                
+                // Show if no filters selected OR if matches selected status
+                if (selectedStatuses.length === 0 || selectedStatuses.includes(statusText)) {
+                    row.style.display = '';
+                    totalHours += parseFloat(row.cells[7].textContent) || 0;
+                } else {
+                    row.style.display = 'none';
+                }
+            }
+            document.getElementById('totalHrs').innerText = totalHours.toFixed(2);
+        }
+
+        // REMOVE A TAG (AND UNCHECK THE BOX)
+        function removeHistoryFilter(statusToRemove) {
+            const checkbox = Array.from(document.querySelectorAll('.hist-status-cb')).find(cb => cb.value === statusToRemove);
+            if (checkbox) {
+                checkbox.checked = false;
+                applyHistoryFilters(); // Re-run filter logic
+            }
+        }
+        
+        // Close history filter menu when clicking outside
+        window.onclick = function(event) {
+            if (!event.target.closest('.history-filter-container')) {
+                const menu = document.getElementById('historyFilterMenu');
+                if (menu && menu.style.display === 'block') {
+                    menu.style.display = 'none';
+                }
+            }
         }
 
         async function loadDisputes() { 
@@ -548,7 +728,7 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             document.getElementById('myAttendanceBody').innerHTML = data.map(r => `<tr><td>${r.date}</td><td>${r.time_in}</td><td>${r.time_out}</td><td>${r.status}</td><td>${r.total_hours}</td></tr>`).join(''); 
         }
 
-        // --- UPDATED HIERARCHY LOADER (Coach Role ID 2 Logic) ---
+        // --- HIERARCHY LOADER (Coach = Role 2, Highlighted) ---
         async function loadHierarchy() { 
             const res = await fetch(`${API}/admin/get_all_attendance.php`); 
             const data = await res.json(); 
@@ -557,7 +737,6 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
                 let name = `<strong>${log.first_name} ${log.last_name}</strong>`;
 
                 // Role ID 2 (Coaches) Highlight (Dark Blue)
-                // Note: Coaches are also clickable to view their team
                 if (log.role_id == 2) { 
                      name = `<span class="coach-pill" onclick="viewTeam(${log.employee_id}, '${log.first_name}')">👤 ${log.first_name} (Coach)</span>`;
                 }
@@ -571,8 +750,23 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
 
         function openDispute(id, name, date) { document.getElementById('resId').value = id; document.getElementById('disputeInfo').innerText = `Resolving for: ${name} (${date})`; document.getElementById('disputeModal').style.display = 'flex'; }
         async function confirmDispute(action) { const payload = { dispute_id: document.getElementById('resId').value, action: action, new_status: document.getElementById('resStatus').value, time_in: document.getElementById('resIn').value, time_out: document.getElementById('resOut').value, remarks: document.getElementById('resRemarks').value }; await fetch(`${API}/management/resolve_dispute.php`, { method:'POST', body:JSON.stringify(payload) }); closeModal(); loadDisputes(); }
-        async function openHistory(empId, name) { viewingMemberId = empId; document.getElementById('modalTitle').innerText = `${name} - Logs`; const d = new Date(), s = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0], e = d.toISOString().split('T')[0]; document.getElementById('hist_mod_start').value = s; document.getElementById('hist_mod_end').value = e; fetchMemberHistory(); document.getElementById('historyModal').style.display = 'flex'; }
-        async function fetchMemberHistory() { const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${viewingMemberId}&start_date=${document.getElementById('hist_mod_start').value}&end_date=${document.getElementById('hist_mod_end').value}`); const data = await res.json(); let total = 0; document.getElementById('modalHistoryBody').innerHTML = data.map(r => { total += parseFloat(r.total_hours || 0); return `<tr><td>${r.date}</td><td>${r.time_in||'--:--'}</td><td>${r.time_out||'--:--'}</td><td>${r.break_in||'--:--'}</td><td>${r.break_out||'--:--'}</td><td>${r.lunch_break||'0'}</td><td><span class="pill status-${(r.status||'').replace(/\s/g,'')}">${r.status}</span></td><td>${r.total_hours}</td></tr>`; }).join(''); document.getElementById('totalHrs').innerText = total.toFixed(2); }
+        async function openHistory(empId, name) { 
+            viewingMemberId = empId; 
+            document.getElementById('modalTitle').innerText = `${name} - Logs`; 
+            // Set default dates for the modal date pickers
+            const d = new Date(), s = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0], e = d.toISOString().split('T')[0]; 
+            document.getElementById('hist_mod_start').value = s; 
+            document.getElementById('hist_mod_end').value = e; 
+            
+            // Clear any previous filters
+            document.querySelectorAll('.hist-status-cb').forEach(cb => cb.checked = false);
+            document.getElementById('historyFilterMenu').style.display = 'none';
+            document.getElementById('activeHistoryFilters').innerHTML = ''; // Clear tags
+
+            fetchMemberHistory(); 
+            document.getElementById('historyModal').style.display = 'flex'; 
+        }
+        async function fetchMemberHistory() { const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${viewingMemberId}&start_date=${document.getElementById('hist_mod_start').value}&end_date=${document.getElementById('hist_mod_end').value}`); const data = await res.json(); let total = 0; document.getElementById('modalHistoryBody').innerHTML = data.map(r => { total += parseFloat(r.total_hours || 0); return `<tr><td>${r.date}</td><td>${r.time_in||'--:--'}</td><td>${r.time_out||'--:--'}</td><td>${r.break_in||'--:--'}</td><td>${r.break_out||'--:--'}</td><td>${r.lunch_break||'0'}</td><td><span class="pill status-${(r.status||'').replace(/\s/g,'')}">${r.status}</span></td><td>${r.total_hours}</td></tr>`; }).join(''); document.getElementById('totalHrs').innerText = total.toFixed(2); applyHistoryFilters(); }
         async function submitRequest(t) { let form = { employee_id: MY_ID }; if(t==='dispute'){ form.date = document.getElementById('d_date').value; form.dispute_type = document.getElementById('d_type').value; form.reason = document.getElementById('d_reason').value; if(form.dispute_type.includes('Forgot')) form.reason += " [Proposed: "+document.getElementById('d_time_in').value+"-"+document.getElementById('d_time_out').value+"]"; } const res = await fetch(`${API}/users/file_${t==='dispute'?'dispute':t}.php`, { method:'POST', body:JSON.stringify(form) }); const r = await res.json(); alert(r.success||r.error); if(r.success) loadMyRequests(); }
 
         function confirmDelete(id) { if(confirm("CRITICAL: Permanently DELETE this record?")) { window.location.href = `super_admin_dashboard.php?delete_id=${id}`; } }
