@@ -5,10 +5,7 @@ header("Content-Type: text/html; charset=UTF-8");
 require_once 'api/config/db.php'; 
 require_once 'api/middleware/auth.php';
 
-/**
- * STRICT ACCESS CONTROL
- * Only Super Admin (Role 4) has full integrated access to these controls.
- */
+// STRICT ACCESS CONTROL: Only Super Admin (Role 4)
 if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 4) {
     header("Location: login.php"); exit;
 }
@@ -16,37 +13,86 @@ if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 4) {
 $user_id = $_SESSION['employee_id'];
 $api_base_url = "http://localhost/hris_official/api"; 
 
-// --- PHP DATA ACTIONS (Direct Database Overrides) ---
-
-// 1. DELETE ATTENDANCE RECORD
+// --- 1. DELETE ATTENDANCE RECORD (Transactional) ---
 if (isset($_GET['delete_id'])) {
-    $stmt = $pdo->prepare("DELETE FROM attendance WHERE attendance_id = ?");
-    $stmt->execute([$_GET['delete_id']]);
-    header("Location: super_admin_dashboard.php?msg=Deleted"); exit;
+    try {
+        $pdo->beginTransaction();
+        
+        // Step 1: Delete associated time logs first to prevent foreign key errors
+        $stmt = $pdo->prepare("DELETE FROM time_logs WHERE attendance_id = ?");
+        $stmt->execute([$_GET['delete_id']]);
+        
+        // Step 2: Delete the attendance record
+        $stmt = $pdo->prepare("DELETE FROM attendance WHERE attendance_id = ?");
+        $stmt->execute([$_GET['delete_id']]);
+        
+        $pdo->commit();
+        header("Location: super_admin_dashboard.php?msg=Deleted"); exit;
+    } catch (Exception $e) { 
+        $pdo->rollBack(); 
+    }
 }
 
-// 2. FULL OVERRIDE (Edit Time & Status)
+// --- 2. FULL OVERRIDE (Edit Time & Status) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_full_edit'])) {
     $id = $_POST['attendance_id'];
     $status = $_POST['status'];
+    // Handle empty strings from time inputs
     $t_in = !empty($_POST['time_in']) ? $_POST['time_in'] : null;
     $t_out = !empty($_POST['time_out']) ? $_POST['time_out'] : null;
+    
     try {
-        $stmt = $pdo->prepare("UPDATE attendance SET attendance_status = ?, time_in = ?, time_out = ? WHERE attendance_id = ?");
-        $stmt->execute([$status, $t_in, $t_out, $id]);
+        $pdo->beginTransaction();
+
+        // Step 1: Update Status in 'attendance' table
+        $stmt = $pdo->prepare("UPDATE attendance SET attendance_status = ? WHERE attendance_id = ?");
+        $stmt->execute([$status, $id]);
+
+        // Step 2: Update or Insert into 'time_logs' table
+        $check = $pdo->prepare("SELECT time_log_id FROM time_logs WHERE attendance_id = ?");
+        $check->execute([$id]);
+        
+        if ($check->rowCount() > 0) {
+            // Update existing log
+            $stmt = $pdo->prepare("UPDATE time_logs SET time_in = ?, time_out = ? WHERE attendance_id = ?");
+            $stmt->execute([$t_in, $t_out, $id]);
+        } else if ($t_in || $t_out) {
+            // Create a new log if one didn't exist (e.g., changing Absent to Present)
+            $infoStmt = $pdo->prepare("SELECT employee_id, attendance_date FROM attendance WHERE attendance_id = ?");
+            $infoStmt->execute([$id]);
+            $info = $infoStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($info) {
+                $stmt = $pdo->prepare("INSERT INTO time_logs (employee_id, attendance_id, time_in, time_out, log_date) VALUES (?, ?, ?, ?, ?)");
+                $stmt->execute([$info['employee_id'], $id, $t_in, $t_out, $info['attendance_date']]);
+            }
+        }
+
+        $pdo->commit();
         header("Location: super_admin_dashboard.php?msg=Updated"); exit;
-    } catch (Exception $e) { $error = $e->getMessage(); }
+    } catch (Exception $e) { 
+        $pdo->rollBack(); 
+        $error = $e->getMessage(); 
+    }
 }
 
-// 3. EDIT RECORD LOADER
+// --- 3. EDIT RECORD LOADER (Fixed Join) ---
 $edit_mode = false; $edit_record = null;
 if (isset($_GET['edit_id'])) {
-    $stmt = $pdo->prepare("SELECT a.*, e.first_name, e.last_name FROM attendance a JOIN employees e ON a.employee_id = e.employee_id WHERE a.attendance_id = ?");
+    // Left Join time_logs to ensure we get data even if the log is missing
+    $sql = "SELECT a.*, e.first_name, e.last_name, t.time_in, t.time_out 
+            FROM attendance a 
+            JOIN employees e ON a.employee_id = e.employee_id 
+            LEFT JOIN time_logs t ON a.attendance_id = t.attendance_id 
+            WHERE a.attendance_id = ?";
+            
+    $stmt = $pdo->prepare($sql);
     $stmt->execute([$_GET['edit_id']]);
     $edit_record = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($edit_record) $edit_mode = true;
 }
 
+// Fetch Admin Name for UI
 $admin_name = "Super Administrator";
 $stmt = $pdo->prepare("SELECT first_name, last_name FROM employees WHERE employee_id = ?");
 $stmt->execute([$user_id]);
@@ -88,13 +134,38 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
         .status-Present { background: #e8f5e9; color: #2e7d32; }
         .status-Endorsed { background: #e3f2fd; color: #3498db; }
         .status-Pending { background: #fff3e0; color: #e67e22; }
+        .status-Absent { background: #ffebee; color: #c62828; }
+        .status-Late { background: #fff3e0; color: #e65100; }
+        .status-Overtime { background: #e0f2f1; color: #00695c; }
+        .status-OnLeave { background: #e1f5fe; color: #0277bd; }
+
+        /* --- UPDATED COACH HIGHLIGHT (DARK BLUE) --- */
+        .coach-pill {
+            background-color: #002D62; /* Dark Blue */
+            color: white;              /* White Text */
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 11px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .coach-pill:hover {
+            opacity: 0.9;
+        }
 
         .btn { padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 11px; text-decoration: none; transition: 0.2s; }
         .btn-edit { background: var(--accent); color: white; }
         .btn-delete { background: var(--danger); color: white; margin-left: 5px; }
         .btn-export { background: var(--success); color: white; }
+        .btn-refresh { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4); padding: 5px 12px; border-radius: 15px; }
+        .btn-refresh:hover { background: rgba(255,255,255,0.4); }
         
         .search-input { padding: 8px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: white; width: 160px; font-size: 12px; }
+        .search-input option { color: #333; }
 
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
         .modal-card { background: white; padding: 30px; border-radius: 12px; width: 450px; box-shadow: 0 15px 40px rgba(0,0,0,0.4); }
@@ -107,6 +178,46 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
         textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; box-sizing: border-box; font-size: 13px; grid-column: span 2; }
         .readonly-field { background: #eee; cursor: not-allowed; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
         .submit-btn { padding: 10px; width: 100%; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; background: var(--accent); }
+
+        /* --- NEW MODAL FORM STYLES (MATCHES REFERENCE IMAGE) --- */
+        .modal-row { display: flex; align-items: center; margin-bottom: 12px; }
+        .modal-row label { width: 90px; font-size: 13px; font-weight: 600; color: #444; }
+        .modal-input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; font-family: inherit; }
+        
+        .modal-actions { display: flex; gap: 10px; margin-top: 25px; }
+        
+        .btn-save-modal { 
+            background: #3498db; 
+            color: white; 
+            flex: 2; 
+            padding: 10px; 
+            border-radius: 5px; 
+            border: none; 
+            cursor: pointer; 
+            font-weight: bold; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 5px;
+        }
+        .btn-save-modal:hover { background: #2980b9; }
+
+        .btn-cancel-modal { 
+            background: #f0f2f5; 
+            color: #333; 
+            flex: 1; 
+            padding: 10px; 
+            border-radius: 5px; 
+            text-decoration: none; 
+            text-align: center; 
+            font-weight: bold; 
+            font-size: 12px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            border: 1px solid #ddd;
+        }
+        .btn-cancel-modal:hover { background: #e4e6eb; }
     </style>
 </head>
 <body>
@@ -137,13 +248,30 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             <div class="header">
                 <h2>System-Wide Override</h2>
                 <div style="display:flex; align-items:center; gap:8px;">
+                    <select id="filter_role" class="search-input" onchange="loadFullData()" style="cursor:pointer; width:140px;">
+                        <option value="">Show All Roles</option>
+                        <option value="1">Employees</option>
+                        <option value="2">Coaches</option>
+                        <option value="3">Admins</option>
+                    </select>
                     <input type="date" id="master_start" class="search-input">
                     <input type="date" id="master_end" class="search-input">
-                    <button class="btn btn-edit" onclick="loadFullData()">🔍 Filter</button>
-                    <button class="btn btn-export" onclick="exportMasterExcel()">📂 Export All</button>
+                    <button class="btn btn-export" onclick="exportMasterExcel()">📂 Export</button>
                 </div>
             </div>
-            <div class="container"><table id="mainTable"><thead><tr><th onclick="sortTable('mainTable',0)">Personnel ⬍</th><th onclick="sortTable('mainTable',1)">Date ⬍</th><th onclick="sortTable('mainTable',2)">In ⬍</th><th onclick="sortTable('mainTable',3)">Out ⬍</th><th onclick="sortTable('mainTable',4)">Hrs ⬍</th><th onclick="sortTable('mainTable',5)">Status ⬍</th><th style="text-align:right;">Actions</th></tr></thead><tbody id="masterData"></tbody></table></div>
+            <div class="container">
+                <table id="mainTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable('mainTable',0)">Personnel ⬍</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th style="text-align:right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="masterData"></tbody>
+                </table>
+            </div>
         </div>
 
         <div id="disputes-view" class="view-content">
@@ -233,8 +361,18 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             </div>
         </div>
 
-        <div id="my-requests" class="view-content"><div class="header"><h2>My Request Status</h2></div><div class="container"><table id="myReqTable"><thead><tr><th onclick="sortTable('myReqTable',0)">Type ⬍</th><th onclick="sortTable('myReqTable',1)">Range ⬍</th><th onclick="sortTable('myReqTable',2)">Status ⬍</th><th onclick="sortTable('myReqTable',3)">Filed On ⬍</th></tr></thead><tbody id="myRequestsBody"></tbody></table></div></div>
-        <div id="my-attendance" class="view-content"><div class="header"><h2>My Personal Records</h2></div><div class="container"><table id="myAttTable"><thead><tr><th onclick="sortTable('myAttTable',0)">Date ⬍</th><th>In</th><th>Out</th><th>Status</th><th>Hrs</th></tr></thead><tbody id="myAttendanceBody"></tbody></table></div></div>
+        <div id="my-requests" class="view-content">
+            <div class="header" style="background: #8e44ad;">
+                <h2>My Request Status</h2>
+                <button class="btn btn-refresh" onclick="loadMyRequests()">🔄 Refresh List</button>
+            </div>
+            <div class="container"><table id="myReqTable"><thead><tr><th onclick="sortTable('myReqTable',0)">Type ⬍</th><th onclick="sortTable('myReqTable',1)">Range ⬍</th><th onclick="sortTable('myReqTable',2)">Status ⬍</th><th onclick="sortTable('myReqTable',3)">Filed On ⬍</th></tr></thead><tbody id="myRequestsBody"></tbody></table></div>
+        </div>
+
+        <div id="my-attendance" class="view-content">
+            <div class="header"><h2>My Personal Records</h2></div>
+            <div class="container"><table id="myAttTable"><thead><tr><th onclick="sortTable('myAttTable',0)">Date ⬍</th><th>In</th><th>Out</th><th>Status</th><th>Hrs</th></tr></thead><tbody id="myAttendanceBody"></tbody></table></div>
+        </div>
     </div>
 
     <div id="disputeModal" class="overlay" style="display:none;">
@@ -266,23 +404,74 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
                     <span class="close-x" onclick="closeModal()">×</span>
                 </div>
             </div>
-            <div style="overflow-y:auto; flex:1;"><table id="modalHistTable"><thead><tr><th onclick="sortTable('modalHistTable',0)">Date ⬍</th><th>Status</th><th>In</th><th>Out</th><th>Hrs</th></tr></thead><tbody id="modalHistoryBody"></tbody></table></div>
+            <div style="overflow-y:auto; flex:1;">
+                <table id="modalHistTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable('modalHistTable',0)">Date ⬍</th>
+                            <th>Time In</th>
+                            <th>Time Out</th>
+                            <th>Break In</th>
+                            <th>Break Out</th>
+                            <th>Lunch</th>
+                            <th>Status</th>
+                            <th>Work Hours</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalHistoryBody"></tbody>
+                </table>
+            </div>
             <div style="padding:15px; border-top:1px solid #eee; text-align:right;"><strong>Total Period Hours: <span id="totalHrs">0.00</span></strong></div>
         </div>
     </div>
 
     <?php if ($edit_mode && $edit_record): ?>
     <div class="overlay">
-        <div class="modal-card">
-            <span class="close-x" onclick="window.location.href='super_admin_dashboard.php'">×</span>
-            <h3>System Override</h3>
-            <p style="font-size:12px;">Personnel: <strong><?php echo htmlspecialchars($edit_record['first_name']); ?></strong></p>
+        <div class="modal-card" style="width: 400px; padding: 25px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <h3 style="margin:0 0 20px 0; font-size:18px;">System Override</h3>
+                <span class="close-x" onclick="window.location.href='super_admin_dashboard.php'">×</span>
+            </div>
+            
+            <p style="font-size:13px; margin-bottom: 20px;">
+                Personnel: <strong><?php echo htmlspecialchars($edit_record['first_name'] . ' ' . $edit_record['last_name']); ?></strong>
+            </p>
+
             <form method="POST">
                 <input type="hidden" name="attendance_id" value="<?php echo $edit_record['attendance_id']; ?>">
-                <div class="form-group"><label>Time In</label><input type="time" name="time_in" value="<?php echo $edit_record['time_in']; ?>"></div>
-                <div class="form-group"><label>Time Out</label><input type="time" name="time_out" value="<?php echo $edit_record['time_out']; ?>"></div>
-                <div class="form-group"><label>Status</label><select name="status"><option value="Present" <?php echo $edit_record['attendance_status'] == 'Present' ? 'selected' : ''; ?>>Present</option><option value="Late" <?php echo $edit_record['attendance_status'] == 'Late' ? 'selected' : ''; ?>>Late</option><option value="Absent" <?php echo $edit_record['attendance_status'] == 'Absent' ? 'selected' : ''; ?>>Absent</option></select></div>
-                <div style="display:flex; gap:10px; margin-top:20px;"><button type="submit" name="save_full_edit" class="btn btn-edit" style="flex:2;">💾 Update Database</button><a href="super_admin_dashboard.php" class="btn" style="flex:1; background:#eee; text-align:center; padding-top:8px; color:#333;">Cancel</a></div>
+                <?php 
+                    $val_in = isset($edit_record['time_in']) ? date('H:i', strtotime($edit_record['time_in'])) : '';
+                    $val_out = isset($edit_record['time_out']) ? date('H:i', strtotime($edit_record['time_out'])) : '';
+                ?>
+                
+                <div class="modal-row">
+                    <label>Time In</label>
+                    <input type="time" name="time_in" value="<?php echo $val_in; ?>" class="modal-input">
+                </div>
+                
+                <div class="modal-row">
+                    <label>Time Out</label>
+                    <input type="time" name="time_out" value="<?php echo $val_out; ?>" class="modal-input">
+                </div>
+                
+                <div class="modal-row">
+                    <label>Status</label>
+                    <select name="status" class="modal-input">
+                        <option value="Present" <?php echo $edit_record['attendance_status'] == 'Present' ? 'selected' : ''; ?>>Present</option>
+                        <option value="Late" <?php echo $edit_record['attendance_status'] == 'Late' ? 'selected' : ''; ?>>Late</option>
+                        <option value="Absent" <?php echo $edit_record['attendance_status'] == 'Absent' ? 'selected' : ''; ?>>Absent</option>
+                        <option value="On Leave" <?php echo $edit_record['attendance_status'] == 'On Leave' ? 'selected' : ''; ?>>On Leave</option>
+                        <option value="Overtime" <?php echo $edit_record['attendance_status'] == 'Overtime' ? 'selected' : ''; ?>>Overtime</option>
+                        <option value="Undertime" <?php echo $edit_record['attendance_status'] == 'Undertime' ? 'selected' : ''; ?>>Undertime</option>
+                        <option value="Duty on Rest Day" <?php echo $edit_record['attendance_status'] == 'Duty on Rest Day' ? 'selected' : ''; ?>>Duty on Rest Day</option>
+                        <option value="Tardy" <?php echo $edit_record['attendance_status'] == 'Tardy' ? 'selected' : ''; ?>>Tardy</option>
+                    </select>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="submit" name="save_full_edit" class="btn-save-modal">💾 Update Database</button>
+                    <a href="super_admin_dashboard.php" class="btn-cancel-modal">Cancel</a>
+                </div>
             </form>
         </div>
     </div>
@@ -318,115 +507,81 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             if(viewId === 'my-attendance') loadMyAttendance();
         }
 
-        async function loadDisputes() {
-            const res = await fetch(`${API}/admin/get_endorsed_disputes.php`);
-            const data = await res.json();
-            document.getElementById('disputeQueue').innerHTML = data.map(d => `<tr><td><strong>${d.first_name} ${d.last_name}</strong></td><td>${d.dispute_date}</td><td>${d.dispute_type || 'N/A'}</td><td>"${d.reason}"</td><td><span class="pill status-Endorsed">${d.status}</span></td><td><button class="btn btn-edit" onclick="openDispute(${d.dispute_id}, '${d.first_name}', '${d.dispute_date}')">🔍 Review</button></td></tr>`).join('');
-        }
-
-        function openDispute(id, name, date) {
-            document.getElementById('resId').value = id;
-            document.getElementById('disputeInfo').innerText = `Resolving for: ${name} (${date})`;
-            document.getElementById('disputeModal').style.display = 'flex';
-        }
-
-        async function confirmDispute(action) {
-            const payload = { dispute_id: document.getElementById('resId').value, action: action, new_status: document.getElementById('resStatus').value, time_in: document.getElementById('resIn').value, time_out: document.getElementById('resOut').value, remarks: document.getElementById('resRemarks').value };
-            await fetch(`${API}/management/resolve_dispute.php`, { method:'POST', body:JSON.stringify(payload) });
-            closeModal(); loadDisputes();
-        }
-
-        async function openHistory(empId, name) {
-            viewingMemberId = empId;
-            document.getElementById('modalTitle').innerText = `${name} - Logs`;
-            const d = new Date(), s = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0], e = d.toISOString().split('T')[0];
-            document.getElementById('hist_mod_start').value = s; document.getElementById('hist_mod_end').value = e;
-            fetchMemberHistory(); document.getElementById('historyModal').style.display = 'flex';
-        }
-
-        async function fetchMemberHistory() {
-            const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${viewingMemberId}&start_date=${document.getElementById('hist_mod_start').value}&end_date=${document.getElementById('hist_mod_end').value}`);
-            const data = await res.json(); let total = 0;
-            document.getElementById('modalHistoryBody').innerHTML = data.map(r => { total += parseFloat(r.total_hours || 0); return `<tr><td>${r.date}</td><td><span class="pill status-Present">${r.status}</span></td><td>${r.time_in}</td><td>${r.time_out}</td><td>${r.total_hours}</td></tr>`; }).join('');
-            document.getElementById('totalHrs').innerText = total.toFixed(2);
-        }
-
-        function exportIndividualExcel() { window.location.href = `${API}/export/export_excel.php?mode=INDIVIDUAL&employee_id=${viewingMemberId}&start_date=${document.getElementById('hist_mod_start').value}&end_date=${document.getElementById('hist_mod_end').value}`; }
-
         async function loadFullData() {
-            const s = document.getElementById('master_start').value, e = document.getElementById('master_end').value;
-            const res = await fetch(`${API}/admin/get_all_attendance.php?start_date=${s}&end_date=${e}`);
+            const s = document.getElementById('master_start').value, e = document.getElementById('master_end').value, role = document.getElementById('filter_role').value;
+            const res = await fetch(`${API}/admin/get_master_attendance.php?start_date=${s}&end_date=${e}&role=${role}`);
             const data = await res.json();
-            document.getElementById('masterData').innerHTML = data.map(row => `<tr><td><strong>${row.first_name} ${row.last_name}</strong></td><td>${row.latest_date || '-'}</td><td>${row.time_in || '--:--'}</td><td>${row.time_out || '--:--'}</td><td>${row.total_hours}</td><td><span class="pill status-Present">${row.latest_status || 'Inactive'}</span></td><td style="text-align:right;"><a href="super_admin_dashboard.php?edit_id=${row.latest_id}" class="btn btn-edit">✏️</a><button onclick="confirmDelete(${row.latest_id})" class="btn btn-delete">🗑️</button></td></tr>`).join('');
-        }
-
-        async function loadRequestHistory() {
-            const res = await fetch(`${API}/admin/get_request_history.php?start_date=${document.getElementById('hist_start').value}&end_date=${document.getElementById('hist_end').value}`);
-            const data = await res.json();
-            document.getElementById('historyBody').innerHTML = data.map(i => `<tr><td>${i.employee_name}</td><td>${i.category}</td><td>${i.type}</td><td><span class="pill status-Pending">${i.status}</span></td><td>${i.created_at}</td></tr>`).join('');
-        }
-
-        async function loadApprovals() {
-            const [l, o] = await Promise.all([fetch(`${API}/admin/get_endorsed_leaves.php`), fetch(`${API}/admin/get_endorsed_ot.php`)]);
-            const leaves = await l.json(), ots = await o.json();
-            document.getElementById('leaveQueue').innerHTML = leaves.map(i => `<tr><td><strong>${i.first_name} ${i.last_name}</strong></td><td>${i.leave_type}</td><td>${i.start_date}</td><td>${i.reason}</td><td>${i.endorser_name}</td><td><button class="btn btn-edit" onclick="finalApprove(${i.leave_id}, 'leave', 'APPROVE')">✔ Final Approve</button></td></tr>`).join('');
-            document.getElementById('otQueue').innerHTML = ots.map(i => `<tr><td><strong>${i.first_name} ${i.last_name}</strong></td><td>OT</td><td>${i.start_time}</td><td>${i.purpose}</td><td>${i.endorser_name}</td><td><button class="btn btn-edit" onclick="finalApprove(${i.ot_id}, 'ot', 'APPROVE')">✔ Final Approve</button></td></tr>`).join('');
-        }
-
-        async function finalApprove(id, type, action) {
-            await fetch(`${API}/admin/final_approve_${type === 'leave' ? 'leave' : 'overtime'}.php`, { method: 'POST', body: JSON.stringify({ [type + '_id']: id, action: action }) });
-            loadApprovals();
-        }
-
-        async function loadHierarchy() {
-            const res = await fetch(`${API}/admin/get_all_attendance.php`);
-            const data = await res.json();
-            document.getElementById("hierarchyBody").innerHTML = data.map(log => {
-                let name = `<strong>${log.first_name} ${log.last_name}</strong>`;
-                if (log.role_id == 2) name = `<span class="clickable-name" onclick="viewTeam(${log.employee_id}, '${log.first_name}')">${log.first_name} (Coach)</span>`;
-                return `<tr><td>${name}</td><td>${log.latest_date||'-'}</td><td>${log.latest_status||'Inactive'}</td><td><button class="btn btn-edit" onclick="openHistory(${log.employee_id}, '${log.first_name}')">👁️ logs</button></td></tr>`;
+            document.getElementById('masterData').innerHTML = data.map(row => {
+                const hasRecord = row.attendance_id != null;
+                const statusDisplay = hasRecord 
+                    ? `<span class="pill status-${row.attendance_status.replace(/\s/g,'')}">${row.attendance_status}</span>` 
+                    : '<span style="color:#999; font-size:11px;">No Record</span>';
+                const actions = hasRecord 
+                    ? `<a href="super_admin_dashboard.php?edit_id=${row.attendance_id}" class="btn btn-edit">✏️</a> <button onclick="confirmDelete(${row.attendance_id})" class="btn btn-delete">🗑️</button>`
+                    : '<span style="font-size:10px; color:#ccc;">N/A</span>';
+                return `<tr><td><strong>${row.first_name} ${row.last_name}</strong></td><td><span style="font-size:10px; color:#888;">${row.role_name || '-'}</span></td><td>${statusDisplay}</td><td style="text-align:right;">${actions}</td></tr>`;
             }).join('');
         }
 
-        async function viewTeam(coachId, coachName) {
-            document.getElementById('backBtn').style.display = 'inline-block'; document.getElementById('hierarchyTitle').innerText = `Team: ${coachName}`;
-            const res = await fetch(`${API}/management/get_team_attendance.php?coach_id=${coachId}`);
-            const data = await res.json();
-            document.getElementById("hierarchyBody").innerHTML = data.map(log => `<tr><td>${log.first_name} ${log.last_name}</td><td>${log.latest_date||'-'}</td><td>${log.latest_status||'-'}</td><td><button class="btn btn-edit" onclick="openHistory(${log.employee_id}, '${log.first_name}')">👁️ logs</button></td></tr>`).join('');
+        async function loadDisputes() { 
+            const res = await fetch(`${API}/admin/get_endorsed_disputes.php`); 
+            const data = await res.json(); 
+            document.getElementById('disputeQueue').innerHTML = data.map(d => `<tr><td><strong>${d.first_name} ${d.last_name}</strong></td><td>${d.dispute_date}</td><td>${d.dispute_type || 'N/A'}</td><td>"${d.reason}"</td><td><span class="pill status-${d.status}">${d.status}</span></td><td><button class="btn btn-edit" onclick="openDispute(${d.dispute_id}, '${d.first_name}', '${d.dispute_date}')">🔍 Review</button></td></tr>`).join(''); 
         }
 
-        function resetToLeaders() { document.getElementById('backBtn').style.display = 'none'; document.getElementById('hierarchyTitle').innerText = "Management Hierarchy"; loadHierarchy(); }
-        function toggleProposedTime(v) { document.getElementById('timeInputDiv').style.display = v.includes('Forgot') ? 'block' : 'none'; }
-        
-        async function submitRequest(t) {
-            let form = { employee_id: MY_ID };
-            if(t==='dispute'){ 
-                form.date = document.getElementById('d_date').value; 
-                form.dispute_type = document.getElementById('d_type').value; 
-                form.reason = document.getElementById('d_reason').value; 
-                if(form.dispute_type.includes('Forgot')) {
-                    form.reason += " [Proposed In: "+document.getElementById('d_time_in').value+", Proposed Out: "+document.getElementById('d_time_out').value+"]"; 
+        async function loadApprovals() { 
+            const [l, o] = await Promise.all([fetch(`${API}/admin/get_endorsed_leaves.php`), fetch(`${API}/admin/get_endorsed_ot.php`)]); 
+            const leaves = await l.json(), ots = await o.json(); 
+            document.getElementById('leaveQueue').innerHTML = leaves.map(i => `<tr><td><strong>${i.first_name} ${i.last_name}</strong></td><td>${i.leave_type}</td><td>${i.start_date}</td><td>${i.reason}</td><td>${i.endorser_name}</td><td><button class="btn btn-edit" onclick="finalApprove(${i.leave_id}, 'leave', 'APPROVE')">✔ Approve</button></td></tr>`).join(''); 
+            document.getElementById('otQueue').innerHTML = ots.map(i => `<tr><td><strong>${i.first_name} ${i.last_name}</strong></td><td>OT</td><td>${i.start_time}</td><td>${i.purpose}</td><td>${i.endorser_name}</td><td><button class="btn btn-edit" onclick="finalApprove(${i.ot_id}, 'ot', 'APPROVE')">✔ Approve</button></td></tr>`).join(''); 
+        }
+
+        async function loadMyRequests() { 
+            const res = await fetch(`${API}/users/get_my_request_history.php?employee_id=${MY_ID}`); 
+            const data = await res.json(); 
+            document.getElementById('myRequestsBody').innerHTML = data.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}</td><td><span class="pill status-${i.status}">${i.status}</span></td><td>${new Date(i.created_at).toLocaleDateString()}</td></tr>`).join(''); 
+        }
+
+        async function loadMyAttendance() { 
+            const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${MY_ID}`); 
+            const data = await res.json(); 
+            document.getElementById('myAttendanceBody').innerHTML = data.map(r => `<tr><td>${r.date}</td><td>${r.time_in}</td><td>${r.time_out}</td><td>${r.status}</td><td>${r.total_hours}</td></tr>`).join(''); 
+        }
+
+        // --- UPDATED HIERARCHY LOADER (Coach Role ID 2 Logic) ---
+        async function loadHierarchy() { 
+            const res = await fetch(`${API}/admin/get_all_attendance.php`); 
+            const data = await res.json(); 
+            
+            document.getElementById("hierarchyBody").innerHTML = data.map(log => { 
+                let name = `<strong>${log.first_name} ${log.last_name}</strong>`;
+
+                // Role ID 2 (Coaches) Highlight (Dark Blue)
+                // Note: Coaches are also clickable to view their team
+                if (log.role_id == 2) { 
+                     name = `<span class="coach-pill" onclick="viewTeam(${log.employee_id}, '${log.first_name}')">👤 ${log.first_name} (Coach)</span>`;
                 }
-            }
-            const res = await fetch(`${API}/users/file_${t==='dispute'?'dispute':t}.php`, { method:'POST', body:JSON.stringify(form) });
-            const r = await res.json(); alert(r.success||r.error);
+                
+                return `<tr><td>${name}</td><td>${log.latest_date||'-'}</td><td>${log.latest_status||'Inactive'}</td><td><button class="btn btn-edit" onclick="openHistory(${log.employee_id}, '${log.first_name}')">👁️ logs</button></td></tr>`; 
+            }).join(''); 
         }
 
-        async function loadMyRequests() {
-            const res = await fetch(`${API}/users/get_my_request_history.php?employee_id=${MY_ID}`);
-            const data = await res.json();
-            document.getElementById('myRequestsBody').innerHTML = data.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}</td><td><span class="pill status-Pending">${i.status}</span></td><td>${new Date(i.created_at).toLocaleDateString()}</td></tr>`).join('');
-        }
+        async function loadRequestHistory() { const res = await fetch(`${API}/admin/get_request_history.php?start_date=${document.getElementById('hist_start').value}&end_date=${document.getElementById('hist_end').value}`); const data = await res.json(); document.getElementById('historyBody').innerHTML = data.map(i => `<tr><td>${i.employee_name}</td><td>${i.category}</td><td>${i.type}</td><td><span class="pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td></tr>`).join(''); }
+        async function finalApprove(id, t, a) { await fetch(`${API}/admin/final_approve_${t==='leave'?'leave':'overtime'}.php`, { method: 'POST', body: JSON.stringify({ [t+'_id']: id, action: a }) }); loadApprovals(); }
 
-        async function loadMyAttendance() {
-            const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${MY_ID}`);
-            const data = await res.json();
-            document.getElementById('myAttendanceBody').innerHTML = data.map(r => `<tr><td>${r.date}</td><td>${r.time_in}</td><td>${r.time_out}</td><td>${r.status}</td><td>${r.total_hours}</td></tr>`).join('');
-        }
+        function openDispute(id, name, date) { document.getElementById('resId').value = id; document.getElementById('disputeInfo').innerText = `Resolving for: ${name} (${date})`; document.getElementById('disputeModal').style.display = 'flex'; }
+        async function confirmDispute(action) { const payload = { dispute_id: document.getElementById('resId').value, action: action, new_status: document.getElementById('resStatus').value, time_in: document.getElementById('resIn').value, time_out: document.getElementById('resOut').value, remarks: document.getElementById('resRemarks').value }; await fetch(`${API}/management/resolve_dispute.php`, { method:'POST', body:JSON.stringify(payload) }); closeModal(); loadDisputes(); }
+        async function openHistory(empId, name) { viewingMemberId = empId; document.getElementById('modalTitle').innerText = `${name} - Logs`; const d = new Date(), s = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0], e = d.toISOString().split('T')[0]; document.getElementById('hist_mod_start').value = s; document.getElementById('hist_mod_end').value = e; fetchMemberHistory(); document.getElementById('historyModal').style.display = 'flex'; }
+        async function fetchMemberHistory() { const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${viewingMemberId}&start_date=${document.getElementById('hist_mod_start').value}&end_date=${document.getElementById('hist_mod_end').value}`); const data = await res.json(); let total = 0; document.getElementById('modalHistoryBody').innerHTML = data.map(r => { total += parseFloat(r.total_hours || 0); return `<tr><td>${r.date}</td><td>${r.time_in||'--:--'}</td><td>${r.time_out||'--:--'}</td><td>${r.break_in||'--:--'}</td><td>${r.break_out||'--:--'}</td><td>${r.lunch_break||'0'}</td><td><span class="pill status-${(r.status||'').replace(/\s/g,'')}">${r.status}</span></td><td>${r.total_hours}</td></tr>`; }).join(''); document.getElementById('totalHrs').innerText = total.toFixed(2); }
+        async function submitRequest(t) { let form = { employee_id: MY_ID }; if(t==='dispute'){ form.date = document.getElementById('d_date').value; form.dispute_type = document.getElementById('d_type').value; form.reason = document.getElementById('d_reason').value; if(form.dispute_type.includes('Forgot')) form.reason += " [Proposed: "+document.getElementById('d_time_in').value+"-"+document.getElementById('d_time_out').value+"]"; } const res = await fetch(`${API}/users/file_${t==='dispute'?'dispute':t}.php`, { method:'POST', body:JSON.stringify(form) }); const r = await res.json(); alert(r.success||r.error); if(r.success) loadMyRequests(); }
 
         function confirmDelete(id) { if(confirm("CRITICAL: Permanently DELETE this record?")) { window.location.href = `super_admin_dashboard.php?delete_id=${id}`; } }
         function closeModal() { document.querySelectorAll('.overlay').forEach(m => m.style.display = 'none'); }
         function exportMasterExcel() { window.location.href = `${API}/export/export_excel.php?mode=ALL&start_date=${document.getElementById('master_start').value}&end_date=${document.getElementById('master_end').value}`; }
+        function exportIndividualExcel() { window.location.href = `${API}/export/export_excel.php?mode=INDIVIDUAL&employee_id=${viewingMemberId}&start_date=${document.getElementById('hist_mod_start').value}&end_date=${document.getElementById('hist_mod_end').value}`; }
+        function toggleProposedTime(v) { document.getElementById('timeInputDiv').style.display = v.includes('Forgot') ? 'block' : 'none'; }
+        async function viewTeam(coachId, coachName) { document.getElementById('backBtn').style.display = 'inline-block'; document.getElementById('hierarchyTitle').innerText = `Team: ${coachName}`; const res = await fetch(`${API}/management/get_team_attendance.php?coach_id=${coachId}`); const data = await res.json(); document.getElementById("hierarchyBody").innerHTML = data.map(log => `<tr><td>${log.first_name} ${log.last_name}</td><td>${log.latest_date||'-'}</td><td>${log.latest_status||'-'}</td><td><button class="btn btn-edit" onclick="openHistory(${log.employee_id}, '${log.first_name}')">👁️ logs</button></td></tr>`).join(''); }
+        function resetToLeaders() { document.getElementById('backBtn').style.display = 'none'; document.getElementById('hierarchyTitle').innerText = "Management Hierarchy"; loadHierarchy(); }
 
         window.onload = function() {
             const d = new Date(), s = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0], e = d.toISOString().split('T')[0];

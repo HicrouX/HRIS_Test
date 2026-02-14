@@ -282,7 +282,18 @@ if (isset($_GET['edit_id'])) {
             </div>
             <div class="modal-body">
                 <table class="history-table">
-                    <thead><tr><th>Date</th><th>Status</th><th>Time In</th><th>Time Out</th><th>Break In</th><th>Break Out</th><th>Lunch</th><th>Hours Worked</th><th>Overtime</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time In</th>
+                            <th>Time Out</th>
+                            <th>Break In</th>
+                            <th>Break Out</th>
+                            <th>Lunch</th>
+                            <th>Status</th>
+                            <th>Work Hours</th>
+                        </tr>
+                    </thead>
                     <tbody id="modalHistoryBody"></tbody>
                 </table>
             </div>
@@ -443,10 +454,20 @@ if (isset($_GET['edit_id'])) {
             const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${empId}&start_date=${start}&end_date=${end}`);
             const data = await res.json();
             let total = 0;
+            // UPDATED: Mapping to new column order (Date, Time In, Time Out, Break In, Break Out, Lunch, Status, Work Hours)
             document.getElementById('modalHistoryBody').innerHTML = data.length ? data.map(row => {
                 total += parseFloat(row.total_hours || 0);
-                return `<tr><td>${row.date}</td><td><span class="status-pill status-${row.status}">${row.status}</span></td><td>${row.time_in}</td><td>${row.time_out}</td><td>${row.lunch_break}</td><td>${row.total_hours}</td></tr>`;
-            }).join('') : '<tr><td colspan="6" style="text-align:center">No records for this period</td></tr>';
+                return `<tr>
+                    <td>${row.date}</td>
+                    <td>${row.time_in || '--:--'}</td>
+                    <td>${row.time_out || '--:--'}</td>
+                    <td>${row.break_in || '--:--'}</td>
+                    <td>${row.break_out || '--:--'}</td>
+                    <td>${row.lunch_break || '0'}</td>
+                    <td><span class="status-pill status-${(row.status||'').replace(/\s/g,'')}">${row.status}</span></td>
+                    <td>${row.total_hours}</td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="8" style="text-align:center">No records for this period</td></tr>';
             document.getElementById('totalHoursDisplay').innerText = total.toFixed(2);
         }
 
@@ -472,7 +493,7 @@ if (isset($_GET['edit_id'])) {
             document.getElementById('my_start').value = s; document.getElementById('my_end').value = e;
             const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${MY_ID}&start_date=${s}&end_date=${e}`);
             const data = await res.json();
-            document.getElementById('myAttendanceBody').innerHTML = data.map(row => `<tr><td>${row.date}</td><td>${row.time_in || '--:--'}</td><td>${row.time_out || '--:--'}</td><td>${row.lunch_break}</td><td>${row.status}</td><td>${row.total_hours || '0.00'} hrs</td></tr>`).join('');
+            document.getElementById('myAttendanceBody').innerHTML = data.map(row => `<tr><td>${row.date}</td><td>${row.time_in || '--:--'}</td><td>${row.time_out || '--:--'}</td><td>${row.break_in || '--:--'}</td><td>${row.break_out || '--:--'}</td><td>${row.lunch_break}</td><td>${row.status}</td><td>${row.total_hours || '0.00'} hrs</td></tr>`).join('');
         }
         
         async function submitRequest(type) {
