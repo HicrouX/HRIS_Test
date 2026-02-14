@@ -1,0 +1,439 @@
+<?php
+// FILE: super_admin_dashboard.php
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
+header("Content-Type: text/html; charset=UTF-8");
+require_once 'api/config/db.php'; 
+require_once 'api/middleware/auth.php';
+
+/**
+ * STRICT ACCESS CONTROL
+ * Only Super Admin (Role 4) has full integrated access to these controls.
+ */
+if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 4) {
+    header("Location: login.php"); exit;
+}
+
+$user_id = $_SESSION['employee_id'];
+$api_base_url = "http://localhost/hris_official/api"; 
+
+// --- PHP DATA ACTIONS (Direct Database Overrides) ---
+
+// 1. DELETE ATTENDANCE RECORD
+if (isset($_GET['delete_id'])) {
+    $stmt = $pdo->prepare("DELETE FROM attendance WHERE attendance_id = ?");
+    $stmt->execute([$_GET['delete_id']]);
+    header("Location: super_admin_dashboard.php?msg=Deleted"); exit;
+}
+
+// 2. FULL OVERRIDE (Edit Time & Status)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_full_edit'])) {
+    $id = $_POST['attendance_id'];
+    $status = $_POST['status'];
+    $t_in = !empty($_POST['time_in']) ? $_POST['time_in'] : null;
+    $t_out = !empty($_POST['time_out']) ? $_POST['time_out'] : null;
+    try {
+        $stmt = $pdo->prepare("UPDATE attendance SET attendance_status = ?, time_in = ?, time_out = ? WHERE attendance_id = ?");
+        $stmt->execute([$status, $t_in, $t_out, $id]);
+        header("Location: super_admin_dashboard.php?msg=Updated"); exit;
+    } catch (Exception $e) { $error = $e->getMessage(); }
+}
+
+// 3. EDIT RECORD LOADER
+$edit_mode = false; $edit_record = null;
+if (isset($_GET['edit_id'])) {
+    $stmt = $pdo->prepare("SELECT a.*, e.first_name, e.last_name FROM attendance a JOIN employees e ON a.employee_id = e.employee_id WHERE a.attendance_id = ?");
+    $stmt->execute([$_GET['edit_id']]);
+    $edit_record = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($edit_record) $edit_mode = true;
+}
+
+$admin_name = "Super Administrator";
+$stmt = $pdo->prepare("SELECT first_name, last_name FROM employees WHERE employee_id = ?");
+$stmt->execute([$user_id]);
+$u = $stmt->fetch();
+if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><title>iREPLY - Super Admin Pro</title>
+    <style>
+        :root { --primary: #1e4d8c; --danger: #e74c3c; --success: #27ae60; --warning: #f1c40f; --accent: #3498db; --bg-main: #121212; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; background: var(--bg-main); overflow: hidden; }
+        
+        .sidebar { width: 260px; background: #fff; padding: 25px; display: flex; flex-direction: column; border-right: 1px solid #ddd; }
+        .logo { color: var(--primary); font-weight: 800; font-size: 26px; margin-bottom: 20px; text-align: center; }
+        .user-badge { text-align: center; padding: 15px; background: #f8f9fa; border-radius: 12px; margin-bottom: 20px; }
+        .role-tag { font-size: 9px; background: var(--danger); color: white; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; font-weight: bold; }
+        
+        .nav-item { padding: 12px 18px; margin: 3px 0; border-radius: 10px; cursor: pointer; color: #555; font-size: 13.5px; text-decoration: none; display: flex; align-items: center; transition: 0.2s; }
+        .nav-item:hover { background: #f0f2f5; color: var(--accent); }
+        .nav-active { background: var(--warning); color: #000 !important; font-weight: bold; }
+        
+        .main-content { flex: 1; background: #fff; margin: 15px; border-radius: 15px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+        .view-content { display: none; flex-direction: column; height: 100%; overflow-y: auto; }
+        .active-view { display: flex; }
+        
+        .header { background: var(--primary); color: white; padding: 20px 35px; display: flex; justify-content: space-between; align-items: center; }
+        .container { padding: 25px 35px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background: #f4f6f8; padding: 12px; text-align: left; font-size: 11px; text-transform: uppercase; color: #666; border-bottom: 2px solid #eee; cursor: pointer; position: relative; }
+        th:hover { background: #ebedef; }
+        th::after { content: ' ⬍'; font-size: 10px; color: #ccc; position: absolute; right: 5px; }
+        td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; font-size: 12.5px; color: #333; }
+        tr:hover { background: #fafafa; }
+
+        .pill { padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: bold; }
+        .status-Present { background: #e8f5e9; color: #2e7d32; }
+        .status-Endorsed { background: #e3f2fd; color: #3498db; }
+        .status-Pending { background: #fff3e0; color: #e67e22; }
+
+        .btn { padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 11px; text-decoration: none; transition: 0.2s; }
+        .btn-edit { background: var(--accent); color: white; }
+        .btn-delete { background: var(--danger); color: white; margin-left: 5px; }
+        .btn-export { background: var(--success); color: white; }
+        
+        .search-input { padding: 8px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: white; width: 160px; font-size: 12px; }
+
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .modal-card { background: white; padding: 30px; border-radius: 12px; width: 450px; box-shadow: 0 15px 40px rgba(0,0,0,0.4); }
+        .modal-wide { width: 1000px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; }
+        .close-x { float: right; font-size: 24px; cursor: pointer; color: #999; line-height: 1; margin-top: -10px; margin-right: -10px;}
+        .close-x:hover { color: #333; }
+
+        .form-card { background: #fafbfc; padding: 25px; border-radius: 8px; border-left: 5px solid var(--accent); margin-bottom: 20px; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
+        textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; box-sizing: border-box; font-size: 13px; grid-column: span 2; }
+        .readonly-field { background: #eee; cursor: not-allowed; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
+        .submit-btn { padding: 10px; width: 100%; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; background: var(--accent); }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">iREPLY</div>
+        <div class="user-badge">
+            <span class="role-tag">Super Admin Mode</span>
+            <div style="font-weight:bold; margin-top:5px;"><?php echo htmlspecialchars($admin_name); ?></div>
+        </div>
+        <nav>
+            <a href="#" class="nav-item nav-active" onclick="switchView('master-ctrl', this)">🛠 System Master Control</a>
+            <a href="#" class="nav-item" onclick="switchView('approvals', this)">✅ Final Sign-offs</a>
+            <a href="#" class="nav-item" onclick="switchView('disputes-view', this)">⚠️ Resolution Center</a>
+            <a href="#" class="nav-item" onclick="switchView('management-view', this)">📊 Management Hierarchy</a>
+            <a href="#" class="nav-item" onclick="switchView('history-view', this)">📜 Global Request Logs</a>
+            
+            <div style="margin-top:15px; padding-top:10px; border-top:1px solid #eee; font-size:11px; color:#999; font-weight:bold;">MY WORKSPACE</div>
+            <a href="#" class="nav-item" onclick="switchView('filing-center', this)">📝 My Filing Center</a>
+            <a href="#" class="nav-item" onclick="switchView('my-requests', this)">🔄 My Request Status</a>
+            <a href="#" class="nav-item" onclick="switchView('my-attendance', this)">👤 My Attendance</a>
+            
+            <a href="logout.php" class="nav-item" style="color:var(--danger); margin-top:20px;">🚪 Logout</a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <div id="master-ctrl" class="view-content active-view">
+            <div class="header">
+                <h2>System-Wide Override</h2>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="date" id="master_start" class="search-input">
+                    <input type="date" id="master_end" class="search-input">
+                    <button class="btn btn-edit" onclick="loadFullData()">🔍 Filter</button>
+                    <button class="btn btn-export" onclick="exportMasterExcel()">📂 Export All</button>
+                </div>
+            </div>
+            <div class="container"><table id="mainTable"><thead><tr><th onclick="sortTable('mainTable',0)">Personnel ⬍</th><th onclick="sortTable('mainTable',1)">Date ⬍</th><th onclick="sortTable('mainTable',2)">In ⬍</th><th onclick="sortTable('mainTable',3)">Out ⬍</th><th onclick="sortTable('mainTable',4)">Hrs ⬍</th><th onclick="sortTable('mainTable',5)">Status ⬍</th><th style="text-align:right;">Actions</th></tr></thead><tbody id="masterData"></tbody></table></div>
+        </div>
+
+        <div id="disputes-view" class="view-content">
+            <div class="header"><h2>⚠️ Resolution Center (Disputes)</h2></div>
+            <div class="container"><table id="disputeTable"><thead><tr><th onclick="sortTable('disputeTable',0)">Employee ⬍</th><th onclick="sortTable('disputeTable',1)">Date ⬍</th><th onclick="sortTable('disputeTable',2)">Type ⬍</th><th onclick="sortTable('disputeTable',3)">Reason ⬍</th><th onclick="sortTable('disputeTable',4)">Status ⬍</th><th>Review</th></tr></thead><tbody id="disputeQueue"></tbody></table></div>
+        </div>
+
+        <div id="approvals" class="view-content">
+            <div class="header"><h2>✅ Final Sign-offs</h2></div>
+            <div class="container">
+                <h3>Leaves</h3>
+                <table id="leaveTable"><thead><tr><th onclick="sortTable('leaveTable',0)">Employee ⬍</th><th onclick="sortTable('leaveTable',1)">Type ⬍</th><th onclick="sortTable('leaveTable',2)">Dates ⬍</th><th onclick="sortTable('leaveTable',3)">Reason ⬍</th><th onclick="sortTable('leaveTable',4)">Coach ⬍</th><th>Review</th></tr></thead><tbody id="leaveQueue"></tbody></table>
+                <h3 style="margin-top:40px;">Overtime</h3>
+                <table id="otTable"><thead><tr><th onclick="sortTable('otTable',0)">Employee ⬍</th><th onclick="sortTable('otTable',1)">Type ⬍</th><th onclick="sortTable('otTable',2)">Time ⬍</th><th onclick="sortTable('otTable',3)">Purpose ⬍</th><th onclick="sortTable('otTable',4)">Coach ⬍</th><th>Review</th></tr></thead><tbody id="otQueue"></tbody></table>
+            </div>
+        </div>
+
+        <div id="management-view" class="view-content">
+            <div class="header">
+                <div>
+                    <button id="backBtn" onclick="resetToLeaders()" style="display:none; cursor:pointer; background:rgba(255,255,255,0.2); border:none; padding:5px 10px; color:white; border-radius:15px; font-size:11px;">⬅ Back</button>
+                    <h2 id="hierarchyTitle">Management Hierarchy</h2>
+                </div>
+            </div>
+            <div class="container"><table id="hierarchyTable"><thead><tr><th onclick="sortTable('hierarchyTable',0)">Personnel ⬍</th><th onclick="sortTable('hierarchyTable',1)">Last Active ⬍</th><th onclick="sortTable('hierarchyTable',2)">Status ⬍</th><th>Logs</th></tr></thead><tbody id="hierarchyBody"></tbody></table></div>
+        </div>
+
+        <div id="history-view" class="view-content">
+            <div class="header">
+                <h2>📜 Global Request Logs</h2>
+                <div style="display:flex; gap:10px;">
+                    <input type="date" id="hist_start" class="search-input">
+                    <input type="date" id="hist_end" class="search-input">
+                    <button class="btn btn-edit" onclick="loadRequestHistory()">Filter</button>
+                </div>
+            </div>
+            <div class="container"><table id="globalHistoryTable"><thead><tr><th onclick="sortTable('globalHistoryTable',0)">Employee ⬍</th><th onclick="sortTable('globalHistoryTable',1)">Category ⬍</th><th onclick="sortTable('globalHistoryTable',2)">Type ⬍</th><th onclick="sortTable('globalHistoryTable',3)">Status ⬍</th><th onclick="sortTable('globalHistoryTable',4)">Filed On ⬍</th></tr></thead><tbody id="historyBody"></tbody></table></div>
+        </div>
+
+        <div id="filing-center" class="view-content">
+            <div class="header"><h2>My Filing Center</h2></div>
+            <div class="container">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:30px;">
+                    <div class="form-card">
+                        <h3>📝 File Leave</h3>
+                        <div class="form-grid">
+                            <select id="l_type"><option>Sick Leave</option><option>Vacation Leave</option></select><div></div>
+                            <input type="date" id="l_start"><input type="date" id="l_end">
+                            <textarea id="l_reason" placeholder="Reason for leave..."></textarea>
+                            <button class="submit-btn" style="grid-column: span 2;" onclick="submitRequest('leave')">Submit Leave</button>
+                        </div>
+                    </div>
+                    <div class="form-card" style="border-left-color: var(--success);">
+                        <h3>⏰ File Overtime</h3>
+                        <div class="form-grid">
+                            <select id="ot_type"><option>Regular Overtime</option><option>Duty on Rest Day</option></select><div></div>
+                            <input type="datetime-local" id="ot_start"><input type="datetime-local" id="ot_end">
+                            <textarea id="ot_purpose" placeholder="Purpose of OT..."></textarea>
+                            <button class="submit-btn" style="background:var(--success); grid-column: span 2;" onclick="submitRequest('ot')">Submit Overtime</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-card" style="border-left: 5px solid #e74c3c;">
+                    <h3 style="color: #e74c3c;">Attendance Dispute</h3>
+                    <form id="disputeForm" class="form-grid">
+                        <input type="text" value="Self-Filing" class="readonly-field" readonly>
+                        <select id="d_type" required onchange="toggleProposedTime(this.value)">
+                            <option value="" disabled selected>Select Dispute Type</option>
+                            <option>Forgot Time In/Out</option>
+                            <option>System Error</option>
+                            <option>Official Business</option>
+                            <option>Incorrect Status</option>
+                            <option>Breaktime</option>
+                            <option>Lunch Break</option>
+                        </select>
+                        <div style="grid-column: span 2;"><label style="font-size:12px; font-weight:bold;">Date of Incident:</label><input type="date" id="d_date"></div>
+                        <div id="timeInputDiv" style="display:none; grid-column: span 2;">
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                                <div><label style="font-weight:bold; color:red; font-size:11px;">Proposed In:</label><input type="time" id="d_time_in"></div>
+                                <div><label style="font-weight:bold; color:red; font-size:11px;">Proposed Out:</label><input type="time" id="d_time_out"></div>
+                            </div>
+                        </div>
+                        <textarea id="d_reason" placeholder="Explain the discrepancy..." rows="3"></textarea>
+                        <button type="button" class="submit-btn" style="background: #e74c3c; grid-column: span 2;" onclick="submitRequest('dispute')">Submit Dispute</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="my-requests" class="view-content"><div class="header"><h2>My Request Status</h2></div><div class="container"><table id="myReqTable"><thead><tr><th onclick="sortTable('myReqTable',0)">Type ⬍</th><th onclick="sortTable('myReqTable',1)">Range ⬍</th><th onclick="sortTable('myReqTable',2)">Status ⬍</th><th onclick="sortTable('myReqTable',3)">Filed On ⬍</th></tr></thead><tbody id="myRequestsBody"></tbody></table></div></div>
+        <div id="my-attendance" class="view-content"><div class="header"><h2>My Personal Records</h2></div><div class="container"><table id="myAttTable"><thead><tr><th onclick="sortTable('myAttTable',0)">Date ⬍</th><th>In</th><th>Out</th><th>Status</th><th>Hrs</th></tr></thead><tbody id="myAttendanceBody"></tbody></table></div></div>
+    </div>
+
+    <div id="disputeModal" class="overlay" style="display:none;">
+        <div class="modal-card">
+            <span class="close-x" onclick="closeModal()">×</span>
+            <h3>Resolve Dispute</h3>
+            <div id="disputeInfo" style="font-size:13px; margin-bottom:15px; background:#f0f4f8; padding:10px; border-radius:6px;"></div>
+            Correction: <select id="resStatus" class="form-group" style="width:100%; padding:10px;"><option value="Present">Present</option><option value="Late">Late</option><option value="Duty on Rest Day">Duty on Rest Day</option></select>
+            <div style="display:flex; gap:10px; margin-bottom:10px;">Adjusted In: <input type="time" id="resIn"> Adjusted Out: <input type="time" id="resOut"></div>
+            <textarea id="resRemarks" placeholder="Internal remarks..."></textarea>
+            <input type="hidden" id="resId">
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button onclick="confirmDispute('APPROVE')" class="btn btn-edit" style="flex:2;">Override & Approve</button>
+                <button onclick="closeModal()" class="btn" style="flex:1; background:#eee; color:#333;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="historyModal" class="overlay" style="display:none;">
+        <div class="modal-card modal-wide">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:15px;">
+                <h3 id="modalTitle" style="margin:0;">Employee logs</h3>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <input type="date" id="hist_mod_start" class="btn" style="background:#f8f9fa; color:#333; border:1px solid #ddd;">
+                    <span>to</span>
+                    <input type="date" id="hist_mod_end" class="btn" style="background:#f8f9fa; color:#333; border:1px solid #ddd;">
+                    <button class="btn btn-edit" onclick="fetchMemberHistory()">Filter Logs</button>
+                    <button class="btn btn-export" onclick="exportIndividualExcel()">📂 Individual Export</button>
+                    <span class="close-x" onclick="closeModal()">×</span>
+                </div>
+            </div>
+            <div style="overflow-y:auto; flex:1;"><table id="modalHistTable"><thead><tr><th onclick="sortTable('modalHistTable',0)">Date ⬍</th><th>Status</th><th>In</th><th>Out</th><th>Hrs</th></tr></thead><tbody id="modalHistoryBody"></tbody></table></div>
+            <div style="padding:15px; border-top:1px solid #eee; text-align:right;"><strong>Total Period Hours: <span id="totalHrs">0.00</span></strong></div>
+        </div>
+    </div>
+
+    <?php if ($edit_mode && $edit_record): ?>
+    <div class="overlay">
+        <div class="modal-card">
+            <span class="close-x" onclick="window.location.href='super_admin_dashboard.php'">×</span>
+            <h3>System Override</h3>
+            <p style="font-size:12px;">Personnel: <strong><?php echo htmlspecialchars($edit_record['first_name']); ?></strong></p>
+            <form method="POST">
+                <input type="hidden" name="attendance_id" value="<?php echo $edit_record['attendance_id']; ?>">
+                <div class="form-group"><label>Time In</label><input type="time" name="time_in" value="<?php echo $edit_record['time_in']; ?>"></div>
+                <div class="form-group"><label>Time Out</label><input type="time" name="time_out" value="<?php echo $edit_record['time_out']; ?>"></div>
+                <div class="form-group"><label>Status</label><select name="status"><option value="Present" <?php echo $edit_record['attendance_status'] == 'Present' ? 'selected' : ''; ?>>Present</option><option value="Late" <?php echo $edit_record['attendance_status'] == 'Late' ? 'selected' : ''; ?>>Late</option><option value="Absent" <?php echo $edit_record['attendance_status'] == 'Absent' ? 'selected' : ''; ?>>Absent</option></select></div>
+                <div style="display:flex; gap:10px; margin-top:20px;"><button type="submit" name="save_full_edit" class="btn btn-edit" style="flex:2;">💾 Update Database</button><a href="super_admin_dashboard.php" class="btn" style="flex:1; background:#eee; text-align:center; padding-top:8px; color:#333;">Cancel</a></div>
+            </form>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <script>
+        const API = "<?php echo $api_base_url; ?>";
+        const MY_ID = "<?php echo $user_id; ?>";
+        let viewingMemberId = null;
+
+        function sortTable(tid, n) {
+            let table = document.getElementById(tid), tbody = table.tBodies[0], rows = Array.from(tbody.rows);
+            let asc = table.getAttribute('data-asc') === 'true';
+            rows.sort((a,b) => {
+                let v1 = a.cells[n].innerText.toLowerCase(), v2 = b.cells[n].innerText.toLowerCase();
+                return asc ? v1.localeCompare(v2) : v2.localeCompare(v1);
+            });
+            rows.forEach(r => tbody.appendChild(r));
+            table.setAttribute('data-asc', !asc);
+        }
+
+        function switchView(viewId, btn) {
+            document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active-view'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('nav-active'));
+            document.getElementById(viewId).classList.add('active-view');
+            btn.classList.add('nav-active');
+            if(viewId === 'master-ctrl') loadFullData();
+            if(viewId === 'disputes-view') loadDisputes();
+            if(viewId === 'approvals') loadApprovals();
+            if(viewId === 'management-view') loadHierarchy();
+            if(viewId === 'history-view') loadRequestHistory();
+            if(viewId === 'my-requests') loadMyRequests();
+            if(viewId === 'my-attendance') loadMyAttendance();
+        }
+
+        async function loadDisputes() {
+            const res = await fetch(`${API}/admin/get_endorsed_disputes.php`);
+            const data = await res.json();
+            document.getElementById('disputeQueue').innerHTML = data.map(d => `<tr><td><strong>${d.first_name} ${d.last_name}</strong></td><td>${d.dispute_date}</td><td>${d.dispute_type || 'N/A'}</td><td>"${d.reason}"</td><td><span class="pill status-Endorsed">${d.status}</span></td><td><button class="btn btn-edit" onclick="openDispute(${d.dispute_id}, '${d.first_name}', '${d.dispute_date}')">🔍 Review</button></td></tr>`).join('');
+        }
+
+        function openDispute(id, name, date) {
+            document.getElementById('resId').value = id;
+            document.getElementById('disputeInfo').innerText = `Resolving for: ${name} (${date})`;
+            document.getElementById('disputeModal').style.display = 'flex';
+        }
+
+        async function confirmDispute(action) {
+            const payload = { dispute_id: document.getElementById('resId').value, action: action, new_status: document.getElementById('resStatus').value, time_in: document.getElementById('resIn').value, time_out: document.getElementById('resOut').value, remarks: document.getElementById('resRemarks').value };
+            await fetch(`${API}/management/resolve_dispute.php`, { method:'POST', body:JSON.stringify(payload) });
+            closeModal(); loadDisputes();
+        }
+
+        async function openHistory(empId, name) {
+            viewingMemberId = empId;
+            document.getElementById('modalTitle').innerText = `${name} - Logs`;
+            const d = new Date(), s = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0], e = d.toISOString().split('T')[0];
+            document.getElementById('hist_mod_start').value = s; document.getElementById('hist_mod_end').value = e;
+            fetchMemberHistory(); document.getElementById('historyModal').style.display = 'flex';
+        }
+
+        async function fetchMemberHistory() {
+            const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${viewingMemberId}&start_date=${document.getElementById('hist_mod_start').value}&end_date=${document.getElementById('hist_mod_end').value}`);
+            const data = await res.json(); let total = 0;
+            document.getElementById('modalHistoryBody').innerHTML = data.map(r => { total += parseFloat(r.total_hours || 0); return `<tr><td>${r.date}</td><td><span class="pill status-Present">${r.status}</span></td><td>${r.time_in}</td><td>${r.time_out}</td><td>${r.total_hours}</td></tr>`; }).join('');
+            document.getElementById('totalHrs').innerText = total.toFixed(2);
+        }
+
+        function exportIndividualExcel() { window.location.href = `${API}/export/export_excel.php?mode=INDIVIDUAL&employee_id=${viewingMemberId}&start_date=${document.getElementById('hist_mod_start').value}&end_date=${document.getElementById('hist_mod_end').value}`; }
+
+        async function loadFullData() {
+            const s = document.getElementById('master_start').value, e = document.getElementById('master_end').value;
+            const res = await fetch(`${API}/admin/get_all_attendance.php?start_date=${s}&end_date=${e}`);
+            const data = await res.json();
+            document.getElementById('masterData').innerHTML = data.map(row => `<tr><td><strong>${row.first_name} ${row.last_name}</strong></td><td>${row.latest_date || '-'}</td><td>${row.time_in || '--:--'}</td><td>${row.time_out || '--:--'}</td><td>${row.total_hours}</td><td><span class="pill status-Present">${row.latest_status || 'Inactive'}</span></td><td style="text-align:right;"><a href="super_admin_dashboard.php?edit_id=${row.latest_id}" class="btn btn-edit">✏️</a><button onclick="confirmDelete(${row.latest_id})" class="btn btn-delete">🗑️</button></td></tr>`).join('');
+        }
+
+        async function loadRequestHistory() {
+            const res = await fetch(`${API}/admin/get_request_history.php?start_date=${document.getElementById('hist_start').value}&end_date=${document.getElementById('hist_end').value}`);
+            const data = await res.json();
+            document.getElementById('historyBody').innerHTML = data.map(i => `<tr><td>${i.employee_name}</td><td>${i.category}</td><td>${i.type}</td><td><span class="pill status-Pending">${i.status}</span></td><td>${i.created_at}</td></tr>`).join('');
+        }
+
+        async function loadApprovals() {
+            const [l, o] = await Promise.all([fetch(`${API}/admin/get_endorsed_leaves.php`), fetch(`${API}/admin/get_endorsed_ot.php`)]);
+            const leaves = await l.json(), ots = await o.json();
+            document.getElementById('leaveQueue').innerHTML = leaves.map(i => `<tr><td><strong>${i.first_name} ${i.last_name}</strong></td><td>${i.leave_type}</td><td>${i.start_date}</td><td>${i.reason}</td><td>${i.endorser_name}</td><td><button class="btn btn-edit" onclick="finalApprove(${i.leave_id}, 'leave', 'APPROVE')">✔ Final Approve</button></td></tr>`).join('');
+            document.getElementById('otQueue').innerHTML = ots.map(i => `<tr><td><strong>${i.first_name} ${i.last_name}</strong></td><td>OT</td><td>${i.start_time}</td><td>${i.purpose}</td><td>${i.endorser_name}</td><td><button class="btn btn-edit" onclick="finalApprove(${i.ot_id}, 'ot', 'APPROVE')">✔ Final Approve</button></td></tr>`).join('');
+        }
+
+        async function finalApprove(id, type, action) {
+            await fetch(`${API}/admin/final_approve_${type === 'leave' ? 'leave' : 'overtime'}.php`, { method: 'POST', body: JSON.stringify({ [type + '_id']: id, action: action }) });
+            loadApprovals();
+        }
+
+        async function loadHierarchy() {
+            const res = await fetch(`${API}/admin/get_all_attendance.php`);
+            const data = await res.json();
+            document.getElementById("hierarchyBody").innerHTML = data.map(log => {
+                let name = `<strong>${log.first_name} ${log.last_name}</strong>`;
+                if (log.role_id == 2) name = `<span class="clickable-name" onclick="viewTeam(${log.employee_id}, '${log.first_name}')">${log.first_name} (Coach)</span>`;
+                return `<tr><td>${name}</td><td>${log.latest_date||'-'}</td><td>${log.latest_status||'Inactive'}</td><td><button class="btn btn-edit" onclick="openHistory(${log.employee_id}, '${log.first_name}')">👁️ logs</button></td></tr>`;
+            }).join('');
+        }
+
+        async function viewTeam(coachId, coachName) {
+            document.getElementById('backBtn').style.display = 'inline-block'; document.getElementById('hierarchyTitle').innerText = `Team: ${coachName}`;
+            const res = await fetch(`${API}/management/get_team_attendance.php?coach_id=${coachId}`);
+            const data = await res.json();
+            document.getElementById("hierarchyBody").innerHTML = data.map(log => `<tr><td>${log.first_name} ${log.last_name}</td><td>${log.latest_date||'-'}</td><td>${log.latest_status||'-'}</td><td><button class="btn btn-edit" onclick="openHistory(${log.employee_id}, '${log.first_name}')">👁️ logs</button></td></tr>`).join('');
+        }
+
+        function resetToLeaders() { document.getElementById('backBtn').style.display = 'none'; document.getElementById('hierarchyTitle').innerText = "Management Hierarchy"; loadHierarchy(); }
+        function toggleProposedTime(v) { document.getElementById('timeInputDiv').style.display = v.includes('Forgot') ? 'block' : 'none'; }
+        
+        async function submitRequest(t) {
+            let form = { employee_id: MY_ID };
+            if(t==='dispute'){ 
+                form.date = document.getElementById('d_date').value; 
+                form.dispute_type = document.getElementById('d_type').value; 
+                form.reason = document.getElementById('d_reason').value; 
+                if(form.dispute_type.includes('Forgot')) {
+                    form.reason += " [Proposed In: "+document.getElementById('d_time_in').value+", Proposed Out: "+document.getElementById('d_time_out').value+"]"; 
+                }
+            }
+            const res = await fetch(`${API}/users/file_${t==='dispute'?'dispute':t}.php`, { method:'POST', body:JSON.stringify(form) });
+            const r = await res.json(); alert(r.success||r.error);
+        }
+
+        async function loadMyRequests() {
+            const res = await fetch(`${API}/users/get_my_request_history.php?employee_id=${MY_ID}`);
+            const data = await res.json();
+            document.getElementById('myRequestsBody').innerHTML = data.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}</td><td><span class="pill status-Pending">${i.status}</span></td><td>${new Date(i.created_at).toLocaleDateString()}</td></tr>`).join('');
+        }
+
+        async function loadMyAttendance() {
+            const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${MY_ID}`);
+            const data = await res.json();
+            document.getElementById('myAttendanceBody').innerHTML = data.map(r => `<tr><td>${r.date}</td><td>${r.time_in}</td><td>${r.time_out}</td><td>${r.status}</td><td>${r.total_hours}</td></tr>`).join('');
+        }
+
+        function confirmDelete(id) { if(confirm("CRITICAL: Permanently DELETE this record?")) { window.location.href = `super_admin_dashboard.php?delete_id=${id}`; } }
+        function closeModal() { document.querySelectorAll('.overlay').forEach(m => m.style.display = 'none'); }
+        function exportMasterExcel() { window.location.href = `${API}/export/export_excel.php?mode=ALL&start_date=${document.getElementById('master_start').value}&end_date=${document.getElementById('master_end').value}`; }
+
+        window.onload = function() {
+            const d = new Date(), s = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0], e = d.toISOString().split('T')[0];
+            document.getElementById('master_start').value = s; document.getElementById('master_end').value = e;
+            document.getElementById('hist_start').value = s; document.getElementById('hist_end').value = e;
+            loadFullData();
+        };
+    </script>
+</body>
+</html>

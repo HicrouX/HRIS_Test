@@ -2,7 +2,6 @@
 // api/users/get_my_request_history.php
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
-
 require_once '../config/db.php';
 
 $emp_id = isset($_GET['employee_id']) ? $_GET['employee_id'] : 0;
@@ -13,7 +12,6 @@ if ($emp_id == 0) {
 }
 
 try {
-    // 1. LEAVES
     $sql = "SELECT 
                 'Leave' as type,
                 lr.leave_type as sub_type,
@@ -34,7 +32,6 @@ try {
             
             UNION ALL
             
-            // 2. OVERTIME
             SELECT 
                 'Overtime' as type,
                 ot.ot_type as sub_type,
@@ -53,7 +50,6 @@ try {
 
             UNION ALL
 
-            // 3. DISPUTES (New)
             SELECT 
                 'Dispute' as type,
                 d.dispute_type as sub_type,
@@ -76,6 +72,6 @@ try {
     echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
 
 } catch (Exception $e) {
-    echo json_encode([]);
+    echo json_encode(["error" => $e->getMessage()]);
 }
 ?>
