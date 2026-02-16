@@ -162,7 +162,7 @@ try {
                 
                 <h3 style="color:#666; margin-top:20px;">My Disputes</h3>
                 <table id="myDisputeTable">
-                    <thead><tr onclick="sortTable('myDisputeTable', 0)"><th>Type ⬍</th><th>Date ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th></tr></thead>
+                    <thead><tr onclick="sortTable('myDisputeTable', 0)"><th>Type ⬍</th><th>Date ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Remarks</th></tr></thead>
                     <tbody id="myDisputeLogs"></tbody>
                 </table>
             </div>
@@ -309,6 +309,7 @@ try {
                         <td>${getApprover(item)}</td>
                     </tr>`;
 
+                // ✅ FIX: Added Remarks Cell
                 const renderDisp = (item) => `
                     <tr>
                         <td>${item.sub_type}</td>
@@ -316,11 +317,12 @@ try {
                         <td>${item.reason}</td>
                         <td><span class="status-pill status-${item.status}">${item.status}</span></td>
                         <td>${new Date(item.created_at).toLocaleDateString()}</td>
+                        <td style="color:blue; font-style:italic;">${item.remarks || '--'}</td>
                     </tr>`;
                 
                 document.getElementById("myLeaveLogs").innerHTML = leaves.length ? leaves.map(renderRow).join('') : '<tr><td colspan="7" style="text-align:center">No records found</td></tr>';
                 document.getElementById("myOTLogs").innerHTML = overtime.length ? overtime.map(renderRow).join('') : '<tr><td colspan="7" style="text-align:center">No records found</td></tr>';
-                document.getElementById("myDisputeLogs").innerHTML = disputes.length ? disputes.map(renderDisp).join('') : '<tr><td colspan="5" style="text-align:center">No records found</td></tr>';
+                document.getElementById("myDisputeLogs").innerHTML = disputes.length ? disputes.map(renderDisp).join('') : '<tr><td colspan="6" style="text-align:center">No records found</td></tr>';
             } catch (err) {
                 console.error("Requests Error:", err);
             }

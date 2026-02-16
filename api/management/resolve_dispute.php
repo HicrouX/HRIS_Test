@@ -18,7 +18,8 @@ if (empty($data->dispute_id) || empty($data->action)) {
 
 // Map Action to DB Status
 $status = ($data->action === 'APPROVE') ? 'Approved' : 'Denied';
-$remarks = $data->remarks ?? ''; 
+// Capture Remarks (defaults to empty string if missing)
+$remarks = isset($data->remarks) ? $data->remarks : ''; 
 
 // These are only used if Approved
 $time_in = $data->time_in ?? null;
@@ -29,31 +30,31 @@ try {
     $pdo->beginTransaction();
 
     // 1. Update Dispute Status & Remarks
+    // <--- FIXED: Updates 'remarks' column specifically
     $stmt = $pdo->prepare("UPDATE attendance_disputes SET status = ?, remarks = ? WHERE dispute_id = ?");
     $stmt->execute([$status, $remarks, $data->dispute_id]);
 
-    // 2. IF APPROVED: Update Attendance & Time Logs immediately
+    // 2. If Approved, Fix the Attendance/Time Logs
     if ($status === 'Approved') {
-        // Get details (Employee & Date)
+        // Get Dispute Details
         $get_disp = $pdo->prepare("SELECT employee_id, dispute_date FROM attendance_disputes WHERE dispute_id = ?");
         $get_disp->execute([$data->dispute_id]);
-        $dispute = $get_disp->fetch(PDO::FETCH_ASSOC);
+        $dispute = $get_disp->fetch();
 
         if ($dispute) {
             $emp_id = $dispute['employee_id'];
             $date = $dispute['dispute_date'];
 
-            // A. Update Attendance Status (if provided)
-            if (!empty($new_attendance_status)) {
+            // A. Update Main Status
+            if ($new_attendance_status) {
                 $sync = $pdo->prepare("INSERT INTO attendance (employee_id, attendance_date, attendance_status) 
                                        VALUES (?, ?, ?) 
                                        ON DUPLICATE KEY UPDATE attendance_status = ?");
                 $sync->execute([$emp_id, $date, $new_attendance_status, $new_attendance_status]);
             }
 
-            // B. Update Time Logs (Time In / Time Out) if provided
+            // B. Update Time Logs (If provided)
             if ($time_in && $time_out) {
-                // Combine Date + Time
                 $dt_in = date('Y-m-d H:i:s', strtotime("$date $time_in"));
                 $dt_out = date('Y-m-d H:i:s', strtotime("$date $time_out"));
 
@@ -80,11 +81,11 @@ try {
     }
 
     $pdo->commit();
-    echo json_encode(["success" => "Dispute settled as $status."]);
+    echo json_encode(["success" => "Dispute Resolved Successfully."]);
 
 } catch (Exception $e) {
     $pdo->rollBack();
-    http_response_code(500); 
-    echo json_encode(["error" => $e->getMessage()]);
+    http_response_code(500);
+    echo json_encode(["error" => "Transaction failed: " . $e->getMessage()]);
 }
 ?>

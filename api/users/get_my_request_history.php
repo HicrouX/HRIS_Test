@@ -1,5 +1,5 @@
 <?php
-// api/users/get_my_request_history.php
+// FILE: api/users/get_my_request_history.php
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 require_once '../config/db.php';
@@ -12,6 +12,7 @@ if ($emp_id == 0) {
 }
 
 try {
+    // 1. LEAVES (No 'remarks' column in table, so we fetch NULL)
     $sql = "SELECT 
                 'Leave' as type,
                 lr.leave_type as sub_type,
@@ -20,6 +21,7 @@ try {
                 lr.reason,
                 lr.status,
                 lr.created_at,
+                NULL as remarks, -- Placeholder
                 c_emp.first_name as coach_first,
                 c_emp.last_name as coach_last,
                 a_emp.first_name as admin_first,
@@ -32,6 +34,7 @@ try {
             
             UNION ALL
             
+            -- 2. OVERTIME (No 'remarks' column, fetch NULL)
             SELECT 
                 'Overtime' as type,
                 ot.ot_type as sub_type,
@@ -40,6 +43,7 @@ try {
                 ot.purpose as reason,
                 ot.status,
                 ot.created_at,
+                NULL as remarks, -- Placeholder
                 NULL as coach_first, 
                 NULL as coach_last,
                 a_emp.first_name as admin_first,
@@ -50,6 +54,7 @@ try {
 
             UNION ALL
 
+            -- 3. DISPUTES (Has 'remarks' column!)
             SELECT 
                 'Dispute' as type,
                 d.dispute_type as sub_type,
@@ -58,6 +63,7 @@ try {
                 d.reason,
                 d.status,
                 d.created_at,
+                d.remarks, -- <--- VITAL FIX: Fetching the actual remarks
                 NULL as coach_first,
                 NULL as coach_last,
                 NULL as admin_first,
@@ -71,7 +77,8 @@ try {
     $stmt->execute([$emp_id, $emp_id, $emp_id]);
     echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
 
-} catch (Exception $e) {
+} catch (PDOException $e) {
+    http_response_code(500);
     echo json_encode(["error" => $e->getMessage()]);
 }
 ?>

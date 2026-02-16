@@ -279,7 +279,12 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
 
         <div id="disputes-view" class="view-content">
             <div class="header"><h2>⚠️ Resolution Center (Disputes)</h2></div>
-            <div class="container"><table id="disputeTable"><thead><tr><th onclick="sortTable('disputeTable',0)">Employee ⬍</th><th onclick="sortTable('disputeTable',1)">Date ⬍</th><th onclick="sortTable('disputeTable',2)">Type ⬍</th><th onclick="sortTable('disputeTable',3)">Reason ⬍</th><th onclick="sortTable('disputeTable',4)">Status ⬍</th><th>Review</th></tr></thead><tbody id="disputeQueue"></tbody></table></div>
+            <div class="container">
+                <table id="disputeTable">
+                    <thead><tr><th onclick="sortTable('disputeTable',0)">Employee ⬍</th><th onclick="sortTable('disputeTable',1)">Date ⬍</th><th onclick="sortTable('disputeTable',2)">Type ⬍</th><th onclick="sortTable('disputeTable',3)">Reason ⬍</th><th onclick="sortTable('disputeTable',4)">Remarks ⬍</th><th onclick="sortTable('disputeTable',5)">Status ⬍</th><th>Review</th></tr></thead>
+                    <tbody id="disputeQueue"></tbody>
+                </table>
+            </div>
         </div>
 
         <div id="approvals" class="view-content">
@@ -369,7 +374,20 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
                 <h2>My Request Status</h2>
                 <button class="btn btn-refresh" onclick="loadMyRequests()">🔄 Refresh List</button>
             </div>
-            <div class="container"><table id="myReqTable"><thead><tr><th onclick="sortTable('myReqTable',0)">Type ⬍</th><th onclick="sortTable('myReqTable',1)">Range ⬍</th><th onclick="sortTable('myReqTable',2)">Status ⬍</th><th onclick="sortTable('myReqTable',3)">Filed On ⬍</th></tr></thead><tbody id="myRequestsBody"></tbody></table></div>
+            <div class="container">
+                <table id="myReqTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable('myReqTable',0)">Type ⬍</th>
+                            <th onclick="sortTable('myReqTable',1)">Range ⬍</th>
+                            <th onclick="sortTable('myReqTable',2)">Status ⬍</th>
+                            <th onclick="sortTable('myReqTable',3)">Remarks ⬍</th>
+                            <th onclick="sortTable('myReqTable',4)">Filed On ⬍</th>
+                        </tr>
+                    </thead>
+                    <tbody id="myRequestsBody"></tbody>
+                </table>
+            </div>
         </div>
 
         <div id="my-attendance" class="view-content">
@@ -676,12 +694,14 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             // Load Pending Disputes for Immediate Resolution
             const res = await fetch(`${API}/management/get_pending_disputes.php?coach_id=${MY_ID}`); 
             const data = await res.json(); 
+            // ✅ FIX: Added Remarks Cell
             document.getElementById('disputeQueue').innerHTML = data.map(d => `
                 <tr>
                     <td><strong>${d.first_name} ${d.last_name}</strong></td>
                     <td>${d.dispute_date}</td>
                     <td>${d.dispute_type || 'N/A'}</td>
                     <td>"${d.reason}"</td>
+                    <td><i style="color:gray;">${d.remarks || 'No remarks'}</i></td>
                     <td><span class="pill status-${d.status}">${d.status}</span></td>
                     <td><button class="btn btn-edit" onclick="openDispute(${d.dispute_id}, '${d.first_name}', '${d.dispute_date}')">🔍 Review</button></td>
                 </tr>`).join(''); 
@@ -730,7 +750,8 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
         async function loadMyRequests() { 
             const res = await fetch(`${API}/users/get_my_request_history.php?employee_id=${MY_ID}`); 
             const data = await res.json(); 
-            document.getElementById('myRequestsBody').innerHTML = data.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}</td><td><span class="pill status-${i.status}">${i.status}</span></td><td>${new Date(i.created_at).toLocaleDateString()}</td></tr>`).join(''); 
+            // ✅ FIX: Added Remarks Cell
+            document.getElementById('myRequestsBody').innerHTML = data.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}</td><td><span class="pill status-${i.status}">${i.status}</span></td><td style="color:blue; font-style:italic;">${i.remarks || '--'}</td><td>${new Date(i.created_at).toLocaleDateString()}</td></tr>`).join(''); 
         }
 
         async function loadMyAttendance() { 

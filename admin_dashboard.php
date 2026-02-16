@@ -171,7 +171,7 @@ if (isset($_GET['edit_id'])) {
 
                 <h3 style="margin-top:40px; color:#e74c3c;">Attendance Disputes (Immediate Settlement)</h3>
                 <table id="adminDisputeTable">
-                    <thead><tr onclick="sortTable('adminDisputeTable', 0)"><th>Employee ⬍</th><th>Role</th><th>Type ⬍</th><th>Reason</th><th>Action</th></tr></thead>
+                    <thead><tr onclick="sortTable('adminDisputeTable', 0)"><th>Employee ⬍</th><th>Role</th><th>Type ⬍</th><th>Reason</th><th>Remarks</th><th>Action</th></tr></thead>
                     <tbody id="adminDisputeQueue"></tbody>
                 </table>
             </div>
@@ -193,7 +193,7 @@ if (isset($_GET['edit_id'])) {
                 <h3 style="color:#666; margin-top:40px;">My Overtime Requests</h3>
                 <table id="myOTTable"><thead><tr onclick="sortTable('myOTTable', 0)"><th>Type ⬍</th><th>Time Range ⬍</th><th>Purpose</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Approved By</th></tr></thead><tbody id="myOTLogs"></tbody></table>
                 <h3 style="color:#666; margin-top:40px;">My Disputes</h3>
-                <table id="myDisputeTable"><thead><tr onclick="sortTable('myDisputeTable', 0)"><th>Type ⬍</th><th>Date ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th></tr></thead><tbody id="myDisputeLogs"></tbody></table>
+                <table id="myDisputeTable"><thead><tr onclick="sortTable('myDisputeTable', 0)"><th>Type ⬍</th><th>Date ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Remarks</th></tr></thead><tbody id="myDisputeLogs"></tbody></table>
             </div>
         </div>
 
@@ -212,6 +212,8 @@ if (isset($_GET['edit_id'])) {
                             <option>System Error</option>
                             <option>Official Business</option>
                             <option>Incorrect Status</option>
+                            <option>Breaktime</option>
+                            <option>Lunch Break</option>
                         </select>
                         <div style="grid-column: span 2;"><label style="font-weight:bold;">Date of Incident:</label><input type="date" id="d_date" required></div>
                         <div id="timeInputDiv" style="display:none; grid-column: span 2;">
@@ -280,13 +282,10 @@ if (isset($_GET['edit_id'])) {
             </div>
         </div>
     </div>
-
+    
     <div id="historyModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title" id="modalTitle">Employee History</div>
-                <span class="close-btn" onclick="closeModal()">×</span>
-            </div>
+            <div class="modal-header"><div class="modal-title" id="modalTitle">Employee History</div><span class="close-btn" onclick="closeModal()">×</span></div>
             <div style="padding: 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: flex-end;">
                 <span style="font-size: 13px; color: #555; margin-right: 10px;">Filter Range:</span>
                 <input type="date" id="hist_modal_start" class="search-box" style="width: 140px;">
@@ -416,6 +415,7 @@ if (isset($_GET['edit_id'])) {
                     <td style="font-size:10px; color:#555;">${item.role_name || 'Employee'}</td>
                     <td>${item.dispute_type || 'General'}</td>
                     <td>${item.reason}</td>
+                    <td><i style="color:gray;">${item.remarks || 'No remarks'}</i></td>
                     <td>
                         <button onclick="openDisputeModal(${item.dispute_id}, '${item.first_name}', '${item.dispute_date}')" style="background:#27ae60; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Review & Settle</button> 
                     </td>
@@ -444,7 +444,7 @@ if (isset($_GET['edit_id'])) {
             loadApprovals();
         }
 
-        // --- DISPUTE MODAL LOGIC (New) ---
+        // --- DISPUTE MODAL LOGIC ---
         function openDisputeModal(id, name, date) { 
             document.getElementById('currentDisputeId').value = id; 
             document.getElementById('disputeModalContent').innerText = `Resolving for: ${name} on ${date}`; 
@@ -535,7 +535,10 @@ if (isset($_GET['edit_id'])) {
             const disputes = data.filter(item => item.type === 'Dispute');
             const getApprover = (item) => item.admin_first ? `<span style="color:#27ae60; font-weight:600;">${item.admin_first} ${item.admin_last}</span>` : '<span style="color:#ccc;">-</span>';
             const renderRow = (item) => `<tr><td>${item.sub_type}</td><td>${item.start_date}<br>${item.end_date}</td><td>${item.reason}</td><td><span class="status-pill status-${item.status}">${item.status}</span></td><td>${item.created_at}</td><td>${getApprover(item)}</td></tr>`;
-            const renderDisp = (item) => `<tr><td>${item.sub_type}</td><td>${item.start_date}</td><td>${item.reason}</td><td><span class="status-pill status-${item.status}">${item.status}</span></td><td>${item.created_at}</td></tr>`;
+            
+            // ✅ FIX: Added Admin Remarks column using item.remarks
+            const renderDisp = (item) => `<tr><td>${item.sub_type}</td><td>${item.start_date}</td><td>${item.reason}</td><td><span class="status-pill status-${item.status}">${item.status}</span></td><td>${item.created_at}</td><td style="color:blue; font-style:italic;">${item.remarks || '--'}</td></tr>`;
+            
             document.getElementById("myLeaveLogs").innerHTML = leaves.map(renderRow).join('');
             document.getElementById("myOTLogs").innerHTML = overtime.map(renderRow).join('');
             document.getElementById("myDisputeLogs").innerHTML = disputes.map(renderDisp).join('');

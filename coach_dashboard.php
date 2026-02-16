@@ -164,7 +164,7 @@ try {
                 
                 <h3 style="margin-top:30px; color:#e74c3c;">Attendance Disputes (Settles Immediately)</h3>
                 <table id="disputeEndorseTable">
-                    <thead><tr onclick="sortTable('disputeEndorseTable', 0)"><th>Employee ⬍</th><th>Role</th><th>Type ⬍</th><th>Reason</th><th>Action</th></tr></thead>
+                    <thead><tr onclick="sortTable('disputeEndorseTable', 0)"><th>Employee ⬍</th><th>Role</th><th>Type ⬍</th><th>Reason</th><th>Remarks</th><th>Action</th></tr></thead>
                     <tbody id="coachDisputeList"></tbody>
                 </table>
             </div>
@@ -209,7 +209,7 @@ try {
             <div class="container">
                 <h3 style="color:#666;">Leave Requests</h3><table id="myLeaveTable"><thead><tr onclick="sortTable('myLeaveTable', 0)"><th>Type ⬍</th><th>Date Range ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Approver</th></tr></thead><tbody id="myLeaveLogs"></tbody></table>
                 <h3 style="color:#666; margin-top:20px;">Overtime Requests</h3><table id="myOTTable"><thead><tr onclick="sortTable('myOTTable', 0)"><th>Type ⬍</th><th>Time Range ⬍</th><th>Purpose</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Approver</th></tr></thead><tbody id="myOTLogs"></tbody></table>
-                <h3 style="color:#666; margin-top:20px;">My Disputes</h3><table id="myDisputeTable"><thead><tr onclick="sortTable('myDisputeTable', 0)"><th>Type ⬍</th><th>Date ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th></tr></thead><tbody id="myDisputeLogs"></tbody></table>
+                <h3 style="color:#666; margin-top:20px;">My Disputes</h3><table id="myDisputeTable"><thead><tr onclick="sortTable('myDisputeTable', 0)"><th>Type ⬍</th><th>Date ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Remarks</th></tr></thead><tbody id="myDisputeLogs"></tbody></table>
             </div>
         </div>
 
@@ -372,7 +372,9 @@ try {
             
             document.getElementById("myLeaveLogs").innerHTML = leaves.length ? leaves.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}<br>${i.end_date}</td><td>${i.reason}</td><td><span class="status-pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td><td>${getApprover(i)}</td></tr>`).join('') : '<tr><td colspan="6">No records</td></tr>';
             document.getElementById("myOTLogs").innerHTML = overtime.length ? overtime.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}<br>${i.end_date}</td><td>${i.reason}</td><td><span class="status-pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td><td>${getApprover(i)}</td></tr>`).join('') : '<tr><td colspan="6">No records</td></tr>';
-            document.getElementById("myDisputeLogs").innerHTML = disputes.length ? disputes.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}</td><td>${i.reason}</td><td><span class="status-pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td></tr>`).join('') : '<tr><td colspan="5">No records</td></tr>';
+            
+            // FIX: Using i.remarks to match DB schema
+            document.getElementById("myDisputeLogs").innerHTML = disputes.length ? disputes.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}</td><td>${i.reason}</td><td><span class="status-pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td><td style="color:blue; font-style:italic;">${i.remarks || '--'}</td></tr>`).join('') : '<tr><td colspan="6">No records</td></tr>';
         }
 
         function loadAllEndorsements() { loadLeaves(); loadOT(); loadDisputes(); }
@@ -383,12 +385,14 @@ try {
         async function loadDisputes() { 
             const res = await fetch(`${API}/management/get_pending_disputes.php?coach_id=${COACH_ID}`); 
             const data = await res.json(); 
+            // FIX: Using item.remarks to match DB schema
             document.getElementById('coachDisputeList').innerHTML = data.map(item => `
                 <tr>
                     <td><strong>${item.first_name} ${item.last_name}</strong></td>
                     <td style="font-size:10px; color:#555;">${item.role_name || 'Employee'}</td>
                     <td>${item.dispute_type || 'General'}</td>
                     <td>${item.reason}</td>
+                    <td><i style="color:gray;">${item.remarks || 'No remarks'}</i></td>
                     <td>
                         <button onclick="openDisputeModal(${item.dispute_id}, '${item.first_name}', '${item.dispute_date}')" style="background:#27ae60; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Review & Settle</button> 
                     </td>
