@@ -1,5 +1,5 @@
 <?php
-// api/management/resolve_dispute.php
+// FILE: api/management/resolve_dispute.php
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 require_once '../config/db.php';
@@ -11,13 +11,19 @@ verifyAccess([2, 3, 4]);
 $data = json_decode(file_get_contents("php://input"));
 
 if (empty($data->dispute_id) || empty($data->action)) {
-    http_response_code(400); echo json_encode(["error" => "Missing parameters."]); exit;
+    http_response_code(400); 
+    echo json_encode(["error" => "Missing parameters."]); 
+    exit;
 }
 
+// Map Action to DB Status
 $status = ($data->action === 'APPROVE') ? 'Approved' : 'Denied';
 $remarks = $data->remarks ?? ''; 
+
+// These are only used if Approved
 $time_in = $data->time_in ?? null;
 $time_out = $data->time_out ?? null;
+$new_attendance_status = $data->new_status ?? null;
 
 try {
     $pdo->beginTransaction();
@@ -26,7 +32,7 @@ try {
     $stmt = $pdo->prepare("UPDATE attendance_disputes SET status = ?, remarks = ? WHERE dispute_id = ?");
     $stmt->execute([$status, $remarks, $data->dispute_id]);
 
-    // 2. IF APPROVED: Update Attendance & Time Logs
+    // 2. IF APPROVED: Update Attendance & Time Logs immediately
     if ($status === 'Approved') {
         // Get details (Employee & Date)
         $get_disp = $pdo->prepare("SELECT employee_id, dispute_date FROM attendance_disputes WHERE dispute_id = ?");
@@ -37,12 +43,12 @@ try {
             $emp_id = $dispute['employee_id'];
             $date = $dispute['dispute_date'];
 
-            // A. Update Attendance Status
-            if (!empty($data->new_status)) {
+            // A. Update Attendance Status (if provided)
+            if (!empty($new_attendance_status)) {
                 $sync = $pdo->prepare("INSERT INTO attendance (employee_id, attendance_date, attendance_status) 
                                        VALUES (?, ?, ?) 
                                        ON DUPLICATE KEY UPDATE attendance_status = ?");
-                $sync->execute([$emp_id, $date, $data->new_status, $data->new_status]);
+                $sync->execute([$emp_id, $date, $new_attendance_status, $new_attendance_status]);
             }
 
             // B. Update Time Logs (Time In / Time Out) if provided
@@ -51,7 +57,7 @@ try {
                 $dt_in = date('Y-m-d H:i:s', strtotime("$date $time_in"));
                 $dt_out = date('Y-m-d H:i:s', strtotime("$date $time_out"));
 
-                // Upsert Time Log (Link by Employee + Date)
+                // Check if log exists
                 $log_check = $pdo->prepare("SELECT time_log_id FROM time_logs WHERE employee_id = ? AND log_date = ?");
                 $log_check->execute([$emp_id, $date]);
                 
@@ -64,8 +70,10 @@ try {
                     $get_att->execute([$emp_id, $date]);
                     $att_id = $get_att->fetchColumn();
 
-                    $insert_log = $pdo->prepare("INSERT INTO time_logs (employee_id, attendance_id, time_in, time_out, log_date) VALUES (?, ?, ?, ?, ?)");
-                    $insert_log->execute([$emp_id, $att_id, $dt_in, $dt_out, $date]);
+                    if($att_id) {
+                        $insert_log = $pdo->prepare("INSERT INTO time_logs (employee_id, attendance_id, time_in, time_out, log_date) VALUES (?, ?, ?, ?, ?)");
+                        $insert_log->execute([$emp_id, $att_id, $dt_in, $dt_out, $date]);
+                    }
                 }
             }
         }
@@ -76,6 +84,7 @@ try {
 
 } catch (Exception $e) {
     $pdo->rollBack();
-    http_response_code(500); echo json_encode(["error" => $e->getMessage()]);
+    http_response_code(500); 
+    echo json_encode(["error" => $e->getMessage()]);
 }
 ?>

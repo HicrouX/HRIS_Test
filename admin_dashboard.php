@@ -24,7 +24,7 @@ try {
     }
 } catch (Exception $e) { /* Ignore */ }
 
-// Edit Attendance Logic
+// Edit Attendance Logic (Existing PHP POST logic)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_status'])) {
     $id = $_POST['attendance_id'];
     $status = $_POST['status'];
@@ -34,6 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_status'])) {
         header("Location: admin_dashboard.php"); exit;
     } catch (Exception $e) { $error = $e->getMessage(); }
 }
+
+// Check for Edit Mode via GET
 $edit_mode = false; $edit_record = null;
 if (isset($_GET['edit_id'])) {
     $stmt = $pdo->prepare("SELECT a.*, e.first_name, e.last_name FROM attendance a JOIN employees e ON a.employee_id = e.employee_id WHERE a.attendance_id = ?");
@@ -74,23 +76,28 @@ if (isset($_GET['edit_id'])) {
         .search-box { padding: 6px 10px; border-radius: 20px; border: none; font-size: 13px; width: 200px; margin-right: 15px; outline: none; border: 1px solid #ddd; }
         .action-icon { cursor: pointer; font-size: 18px; margin-right: 10px; text-decoration: none; display: inline-block; transition: 0.2s; }
         .action-icon:hover { transform: scale(1.2); }
+        
+        /* MODAL STYLES */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: white; padding: 0; border-radius: 4px; width: 1000px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
         .modal-header { background: #fff; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
         .modal-title { font-size: 16px; font-weight: bold; color: #333; }
         .modal-body { padding: 0; overflow-y: auto; background: #f9f9f9; }
         .close-btn { cursor: pointer; font-size: 24px; color: #999; }
+        
         .history-table th { background: #eee; color: #333; font-weight: bold; font-size: 12px; border-bottom: 2px solid #ddd; padding: 12px; }
         .history-table td { background: #fff; color: #555; font-size: 12px; border-bottom: 1px solid #eee; padding: 12px; vertical-align: middle; }
         .clickable-name { color: #1e4d8c; font-weight: bold; cursor: pointer; text-decoration: underline; }
+        
         .form-card { background: #fafbfc; padding: 30px; border-radius: 8px; border-left: 5px solid var(--accent-blue); margin-bottom: 30px; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }
         input, select, textarea { padding: 8px; border: 1px solid #ddd; border-radius: 6px; width: 100%; box-sizing: border-box; font-size: 13px; }
         textarea { grid-column: span 2; }
         .submit-btn { padding: 10px; width: 100%; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; background: var(--accent-blue); }
         .date-input-small { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 5px; border-radius: 4px; font-size: 13px; }
+        
         .overlay { display: <?php echo $edit_mode ? 'flex' : 'none'; ?>; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
-        .modal-box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 400px; animation: fadeIn 0.3s; }
+        .modal-box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 450px; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
         select.search-box { background: #fff; cursor: pointer; }
     </style>
@@ -135,50 +142,37 @@ if (isset($_GET['edit_id'])) {
         <div id="approvals-view" class="view-content">
             <div class="header"><h2>✅ Final Sign-offs</h2></div>
             <div class="container">
-                <h3>Leaves</h3>
+                <h3>Leaves (Endorsed)</h3>
                 <div style="margin-bottom:10px;">
                     <select class="search-box" onchange="filterTable('adminLeaveTable', this.value)" style="margin-left:0; width: 200px;">
                         <option value="">Show All Types</option>
                         <option value="Sick Leave">Sick Leave</option>
                         <option value="Vacation Leave">Vacation Leave</option>
                         <option value="Emergency Leave">Emergency Leave</option>
-                        <option value="Maternity Leave">Maternity Leave</option>
-                        <option value="Paternity Leave">Paternity Leave</option>
                     </select>
                 </div>
                 <table id="adminLeaveTable">
-                    <thead>
-                        <tr onclick="sortTable('adminLeaveTable', 0)">
-                            <th>Employee ⬍</th>
-                            <th>Type ⬍</th> <th>Date Range</th>
-                            <th>Reason</th>
-                            <th>Endorsed By</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
+                    <thead><tr onclick="sortTable('adminLeaveTable', 0)"><th>Employee ⬍</th><th>Type ⬍</th><th>Date Range</th><th>Reason</th><th>Endorsed By</th><th>Action</th></tr></thead>
                     <tbody id="adminLeaveQueue"></tbody>
                 </table>
                 
-                <h3 style="margin-top:40px;">Overtime</h3>
+                <h3 style="margin-top:40px;">Overtime (Endorsed)</h3>
                 <div style="margin-bottom:10px;">
                     <select class="search-box" onchange="filterTable('adminOTTable', this.value)" style="margin-left:0; width: 200px;">
                         <option value="">Show All Types</option>
                         <option value="Regular Overtime">Regular Overtime</option>
                         <option value="Duty on Rest Day">Duty on Rest Day</option>
-                        <option value="Duty on Rest Day OT">Duty on Rest Day OT</option>
                     </select>
                 </div>
                 <table id="adminOTTable">
-                    <thead>
-                        <tr onclick="sortTable('adminOTTable', 0)">
-                            <th>Employee ⬍</th>
-                            <th>Type ⬍</th> <th>Date/Time</th>
-                            <th>Purpose</th>
-                            <th>Endorsed By</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
+                    <thead><tr onclick="sortTable('adminOTTable', 0)"><th>Employee ⬍</th><th>Type ⬍</th><th>Date/Time</th><th>Purpose</th><th>Endorsed By</th><th>Action</th></tr></thead>
                     <tbody id="adminOTQueue"></tbody>
+                </table>
+
+                <h3 style="margin-top:40px; color:#e74c3c;">Attendance Disputes (Immediate Settlement)</h3>
+                <table id="adminDisputeTable">
+                    <thead><tr onclick="sortTable('adminDisputeTable', 0)"><th>Employee ⬍</th><th>Role</th><th>Type ⬍</th><th>Reason</th><th>Action</th></tr></thead>
+                    <tbody id="adminDisputeQueue"></tbody>
                 </table>
             </div>
         </div>
@@ -195,20 +189,11 @@ if (isset($_GET['edit_id'])) {
             <div class="header" style="background: #8e44ad;"><h2 style="margin:0;">My Request Status</h2><button class="submit-btn" style="width:auto; padding:5px 15px; background:rgba(255,255,255,0.2);" onclick="loadMyRequests()">🔄 Refresh</button></div>
             <div class="container">
                 <h3 style="color:#666;">My Leave Requests</h3>
-                <table id="myLeaveTable">
-                    <thead><tr onclick="sortTable('myLeaveTable', 0)"><th>Type ⬍</th><th>Date Range ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Approved By</th></tr></thead>
-                    <tbody id="myLeaveLogs"></tbody>
-                </table>
+                <table id="myLeaveTable"><thead><tr onclick="sortTable('myLeaveTable', 0)"><th>Type ⬍</th><th>Date Range ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Approved By</th></tr></thead><tbody id="myLeaveLogs"></tbody></table>
                 <h3 style="color:#666; margin-top:40px;">My Overtime Requests</h3>
-                <table id="myOTTable">
-                    <thead><tr onclick="sortTable('myOTTable', 0)"><th>Type ⬍</th><th>Time Range ⬍</th><th>Purpose</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Approved By</th></tr></thead>
-                    <tbody id="myOTLogs"></tbody>
-                </table>
+                <table id="myOTTable"><thead><tr onclick="sortTable('myOTTable', 0)"><th>Type ⬍</th><th>Time Range ⬍</th><th>Purpose</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Approved By</th></tr></thead><tbody id="myOTLogs"></tbody></table>
                 <h3 style="color:#666; margin-top:40px;">My Disputes</h3>
-                <table id="myDisputeTable">
-                    <thead><tr onclick="sortTable('myDisputeTable', 0)"><th>Type ⬍</th><th>Date ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th></tr></thead>
-                    <tbody id="myDisputeLogs"></tbody>
-                </table>
+                <table id="myDisputeTable"><thead><tr onclick="sortTable('myDisputeTable', 0)"><th>Type ⬍</th><th>Date ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th></tr></thead><tbody id="myDisputeLogs"></tbody></table>
             </div>
         </div>
 
@@ -227,8 +212,6 @@ if (isset($_GET['edit_id'])) {
                             <option>System Error</option>
                             <option>Official Business</option>
                             <option>Incorrect Status</option>
-                            <option>Breaktime</option>
-                            <option>Lunch Break</option>
                         </select>
                         <div style="grid-column: span 2;"><label style="font-weight:bold;">Date of Incident:</label><input type="date" id="d_date" required></div>
                         <div id="timeInputDiv" style="display:none; grid-column: span 2;">
@@ -250,20 +233,50 @@ if (isset($_GET['edit_id'])) {
                 <div style="display:flex;"><input type="date" id="my_start" onchange="loadMyAttendance()"><input type="date" id="my_end" style="margin-left:5px;" onchange="loadMyAttendance()"></div>
             </div>
             <div class="container">
-                <div style="margin-bottom:10px;">
-                    <select class="search-box" onchange="filterTable('myAttTable', this.value)" style="margin-left:0; width:150px;">
-                        <option value="">Show All Statuses</option>
-                        <option value="Present">Present</option>
-                        <option value="Late">Late</option>
-                        <option value="Tardy">Tardy</option>
-                        <option value="Absent">Absent</option>
-                        <option value="Overtime">Overtime</option>
-                        <option value="On Leave">On Leave</option>
-                        <option value="Undertime">Undertime</option>
-                        <option value="Duty on Rest Day">Duty on Rest Day</option>
-                    </select>
-                </div>
+                <div style="margin-bottom:10px;"><select class="search-box" onchange="filterTable('myAttTable', this.value)" style="margin-left:0; width:150px;"><option value="">Show All Statuses</option><option value="Present">Present</option><option value="Late">Late</option><option value="Absent">Absent</option><option value="Overtime">Overtime</option><option value="On Leave">On Leave</option></select></div>
                 <table id="myAttTable"><thead><tr onclick="sortTable('myAttTable', 0)"><th>Date ⬍</th><th>In</th><th>Out</th><th>Break In</th><th>Break Out</th><th>Lunch</th><th>Status</th><th>Hrs</th></tr></thead><tbody id="myAttendanceBody"></tbody></table>
+            </div>
+        </div>
+    </div>
+
+    <div id="disputeModal" class="modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title">Resolve Dispute (Immediate)</div>
+                <span class="close-btn" onclick="closeDisputeModal()">×</span>
+            </div>
+            
+            <div id="disputeModalContent" style="padding:15px; font-size:13px; background:#f9f9f9; border-radius:6px; margin:10px 0;"></div>
+            
+            <label style="display:block; margin-bottom:5px; font-weight:bold;">Action:</label>
+            <select id="disputeAction" style="width:100%; padding:10px; margin-bottom:10px;" onchange="toggleDisputeFields()">
+                <option value="APPROVE">Approve (Modify Attendance)</option>
+                <option value="DENY">Deny (No Changes)</option>
+            </select>
+            
+            <div id="approvalFields">
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">Set Correct Status:</label>
+                <select id="newDisputeStatus" style="width:100%; padding:10px; margin-bottom:10px;">
+                    <option value="Present">Present</option>
+                    <option value="Late">Late</option>
+                    <option value="Absent">Absent</option>
+                    <option value="Overtime">Overtime</option>
+                    <option value="On Leave">On Leave</option>
+                    <option value="Duty on Rest Day">Duty on Rest Day</option>
+                </select>
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <div>Proposed In: <input type="time" id="finalTimeIn"></div>
+                    <div>Proposed Out: <input type="time" id="finalTimeOut"></div>
+                </div>
+            </div>
+
+            <label style="font-weight:bold;">Remarks:</label>
+            <textarea id="actionRemarks" rows="2" style="width:100%; margin-bottom:10px;"></textarea>
+            <input type="hidden" id="currentDisputeId">
+            
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button onclick="confirmDispute()" style="flex:2; padding:10px; background:#27ae60; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">Confirm & Settle</button>
+                <button onclick="closeDisputeModal()" style="flex:1; padding:10px; background:#eee; color:#333; border:none; border-radius:5px; cursor:pointer;">Cancel</button>
             </div>
         </div>
     </div>
@@ -282,18 +295,7 @@ if (isset($_GET['edit_id'])) {
             </div>
             <div class="modal-body">
                 <table class="history-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Time In</th>
-                            <th>Time Out</th>
-                            <th>Break In</th>
-                            <th>Break Out</th>
-                            <th>Lunch</th>
-                            <th>Status</th>
-                            <th>Work Hours</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>Date</th><th>Time In</th><th>Time Out</th><th>Break In</th><th>Break Out</th><th>Lunch</th><th>Status</th><th>Work Hours</th></tr></thead>
                     <tbody id="modalHistoryBody"></tbody>
                 </table>
             </div>
@@ -308,14 +310,13 @@ if (isset($_GET['edit_id'])) {
             <form method="POST" action="admin_dashboard.php">
                 <input type="hidden" name="attendance_id" value="<?php echo $edit_record['attendance_id']; ?>">
                 <select name="status" style="width:100%; padding:10px; border-radius: 5px; border: 1px solid #ddd; margin-bottom: 10px;">
-                    <option value="Present" <?php echo ($edit_record['attendance_status'] == 'Present') ? 'selected' : ''; ?>>Present</option>
-                    <option value="Absent" <?php echo ($edit_record['attendance_status'] == 'Absent') ? 'selected' : ''; ?>>Absent</option>
-                    <option value="Late" <?php echo ($edit_record['attendance_status'] == 'Late') ? 'selected' : ''; ?>>Late</option>
-                    <option value="Overtime" <?php echo ($edit_record['attendance_status'] == 'Overtime') ? 'selected' : ''; ?>>Overtime</option>
-                    <option value="On Leave" <?php echo ($edit_record['attendance_status'] == 'On Leave') ? 'selected' : ''; ?>>On Leave</option>
-                    <option value="Undertime" <?php echo ($edit_record['attendance_status'] == 'Undertime') ? 'selected' : ''; ?>>Undertime</option>
-                    <option value="Duty on Rest Day" <?php echo ($edit_record['attendance_status'] == 'Duty on Rest Day') ? 'selected' : ''; ?>>Duty on Rest Day</option>
-                    <option value="Tardy" <?php echo ($edit_record['attendance_status'] == 'Tardy') ? 'selected' : ''; ?>>Tardy</option>
+                    <?php 
+                    $statuses = ['Present','Absent','Late','Overtime','On Leave','Undertime','Duty on Rest Day','Tardy'];
+                    foreach($statuses as $s) {
+                        $sel = ($edit_record['attendance_status'] == $s) ? 'selected' : '';
+                        echo "<option value='$s' $sel>$s</option>";
+                    }
+                    ?>
                 </select>
                 <button type="submit" name="save_status" style="width:100%; padding:10px; background:#27ae60; color:white; border:none; border-radius:5px; cursor:pointer;">Save Changes</button>
                 <a href="admin_dashboard.php" style="display:block; text-align:center; margin-top:10px; color:#666; font-size:12px; text-decoration:none;">Cancel</a>
@@ -401,9 +402,24 @@ if (isset($_GET['edit_id'])) {
         function resetToLeaders() { currentMode = 'COACHES'; currentCoachId = null; refreshTable(); }
 
         async function loadApprovals() {
+            // Load Leaves & OT
             const [leaveRes, otRes] = await Promise.all([fetch(`${API}/admin/get_endorsed_leaves.php`), fetch(`${API}/admin/get_endorsed_ot.php`)]);
             renderQueue(await leaveRes.json(), 'adminLeaveQueue', 'leave');
             renderQueue(await otRes.json(), 'adminOTQueue', 'ot');
+
+            // NEW: Load Pending Disputes for Immediate Resolution
+            const dispRes = await fetch(`${API}/management/get_pending_disputes.php?coach_id=${MY_ID}`);
+            const dispData = await dispRes.json();
+            document.getElementById('adminDisputeQueue').innerHTML = dispData.map(item => `
+                <tr>
+                    <td><strong>${item.first_name} ${item.last_name}</strong></td>
+                    <td style="font-size:10px; color:#555;">${item.role_name || 'Employee'}</td>
+                    <td>${item.dispute_type || 'General'}</td>
+                    <td>${item.reason}</td>
+                    <td>
+                        <button onclick="openDisputeModal(${item.dispute_id}, '${item.first_name}', '${item.dispute_date}')" style="background:#27ae60; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Review & Settle</button> 
+                    </td>
+                </tr>`).join('');
         }
 
         function renderQueue(items, id, type) {
@@ -427,6 +443,44 @@ if (isset($_GET['edit_id'])) {
             await fetch(`${API}${endpoint}?admin_id=${MY_ID}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [type + '_id']: id, action: action }) });
             loadApprovals();
         }
+
+        // --- DISPUTE MODAL LOGIC (New) ---
+        function openDisputeModal(id, name, date) { 
+            document.getElementById('currentDisputeId').value = id; 
+            document.getElementById('disputeModalContent').innerText = `Resolving for: ${name} on ${date}`; 
+            document.getElementById('disputeAction').value = "APPROVE";
+            toggleDisputeFields();
+            document.getElementById('disputeModal').style.display = 'flex'; 
+        }
+
+        function closeDisputeModal() { document.getElementById('disputeModal').style.display = 'none'; }
+        
+        function toggleDisputeFields() {
+            const action = document.getElementById('disputeAction').value;
+            document.getElementById('approvalFields').style.display = (action === 'APPROVE') ? 'block' : 'none';
+        }
+
+        async function confirmDispute() { 
+            const id = document.getElementById('currentDisputeId').value; 
+            const action = document.getElementById('disputeAction').value; 
+            const rem = document.getElementById('actionRemarks').value; 
+            
+            let payload = { dispute_id: id, action: action, remarks: rem };
+
+            if (action === 'APPROVE') {
+                payload.new_status = document.getElementById('newDisputeStatus').value;
+                payload.time_in = document.getElementById('finalTimeIn').value;
+                payload.time_out = document.getElementById('finalTimeOut').value;
+            }
+            
+            await fetch(`${API}/management/resolve_dispute.php`, { 
+                method: 'POST', 
+                body: JSON.stringify(payload) 
+            }); 
+            closeDisputeModal(); 
+            loadApprovals(); 
+        }
+        // --------------------------------
 
         async function loadRequestHistory() {
             const start = document.getElementById('hist_start').value, end = document.getElementById('hist_end').value, status = document.getElementById('hist_status').value;
@@ -454,7 +508,6 @@ if (isset($_GET['edit_id'])) {
             const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${empId}&start_date=${start}&end_date=${end}`);
             const data = await res.json();
             let total = 0;
-            // UPDATED: Mapping to new column order (Date, Time In, Time Out, Break In, Break Out, Lunch, Status, Work Hours)
             document.getElementById('modalHistoryBody').innerHTML = data.length ? data.map(row => {
                 total += parseFloat(row.total_hours || 0);
                 return `<tr>

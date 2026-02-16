@@ -3,12 +3,12 @@
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 require_once 'api/config/db.php'; 
 require_once 'api/middleware/auth.php';
-verifyAccess([2]); 
+verifyAccess([2]); // Coach Access Only
 
 $api_base_url = "http://localhost/hris_official/api"; 
 $coach_id = $_SESSION['employee_id'];
 
-// FETCH COACH REAL NAME
+// FETCH COACH NAME
 $coach_name = "Coach";
 try {
     $stmt = $pdo->prepare("SELECT first_name, last_name FROM employees WHERE employee_id = ?");
@@ -25,11 +25,8 @@ try {
         :root { --primary-blue: #1e4d8c; --accent-blue: #3498db; --bg-dark: #222; --text-gray: #666; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; background: var(--bg-dark); overflow: hidden; }
         
-        /* Sidebar */
         .sidebar { width: 240px; background: #fff; padding: 25px; display: flex; flex-direction: column; border-right: 1px solid #ddd; }
         .logo { color: var(--primary-blue); font-weight: bold; font-size: 26px; margin-bottom: 20px; text-align: center; }
-        
-        /* User Info */
         .user-info { text-align: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
         .user-name { font-weight: bold; font-size: 16px; color: #333; margin-bottom: 5px; text-transform: capitalize; }
         .user-id { font-size: 11px; color: #888; background: #f4f4f4; padding: 3px 10px; border-radius: 12px; display: inline-block; }
@@ -37,20 +34,17 @@ try {
         .nav-item { padding: 12px 20px; margin: 5px 0; border-radius: 8px; cursor: pointer; color: var(--text-gray); font-size: 14px; transition: 0.2s; }
         .nav-active { background: #FFC107; color: #000 !important; font-weight: bold; }
         
-        /* Main Content */
-        .main-content { flex: 1; background: #fff; margin: 15px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+        .main-content { flex: 1; background: #fff; margin: 15px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
         .view-content { display: none; flex-direction: column; height: 100%; overflow-y: auto; }
         .active-view { display: flex; }
         
         .header { background: var(--primary-blue); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; }
         .container { padding: 20px 40px; }
         
-        /* Compact Table */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #f9f9f9; font-size: 12px; }
         th { cursor: pointer; background-color: #f8f9fa; font-weight: 600; color: #555; position: relative; }
         th:hover { background: #ebedef; }
-        th::after { content: ' ⬍'; font-size: 10px; color: #ccc; position: absolute; right: 5px; }
         
         .status-pill { padding: 4px 10px; border-radius: 12px; font-weight: 600; font-size: 10px; text-transform: uppercase; }
         .status-Pending { background: #fff3e0; color: #e67e22; }
@@ -60,15 +54,12 @@ try {
         .status-Present { background: #e8f5e9; color: #2e7d32; }
         .status-Late, .status-Tardy { background: #fff3e0; color: #e67e22; }
         .status-Absent { background: #ffebee; color: #c62828; }
-        .status-OnLeave { background: #e3f2fd; color: #1565c0; }
         
-        .action-btn { cursor: pointer; font-size: 16px; margin: 0 5px; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: white; padding: 0; border-radius: 4px; width: 1000px; max-height: 90vh; display: flex; flex-direction: column; }
         .modal-header { background: #fff; padding: 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;}
         .modal-title { font-weight: bold; color: #333; }
         .close-x { font-size: 24px; cursor: pointer; color: #999; }
-        .close-x:hover { color: #333; }
         
         .history-table th { background: #eee; color: #333; font-weight: bold; font-size: 12px; border-bottom: 2px solid #ddd; padding: 10px; }
         .history-table td { background: #fff; color: #555; font-size: 12px; border-bottom: 1px solid #eee; padding: 10px; vertical-align: middle; }
@@ -79,15 +70,25 @@ try {
         input, select, textarea { padding: 8px; border: 1px solid #ddd; border-radius: 6px; width: 100%; box-sizing: border-box; font-size: 13px; }
         textarea { grid-column: span 2; }
         .submit-btn { width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; background: var(--accent-blue); }
-        .action-icon { cursor: pointer; font-size: 18px; margin-right: 10px; transition:0.2s; }
-        .action-icon:hover { transform: scale(1.2); }
+        
         .modal-box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 450px; animation: fadeIn 0.3s; }
         
-        /* Filters */
         .search-box { padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; outline: none; margin-left: 10px; background: #fff; }
         .export-btn { background: #27ae60; border: none; padding: 6px 12px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold; font-size: 12px; margin-left: 10px; }
-        select.search-box { background: #fff; cursor: pointer; }
-        .readonly-field { background: #eee; cursor: not-allowed; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
+        
+        .date-filter-input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; color: #333; outline: none; background: white; }
+
+        .history-filter-container { position: relative; display: inline-block; }
+        .history-filter-dropdown {
+            display: none; position: absolute; top: 100%; left: 0; background: white; border: 1px solid #ddd; padding: 10px; border-radius: 5px; 
+            z-index: 10000; width: 160px; box-shadow: 0 8px 16px rgba(0,0,0,0.15); text-align: left; margin-top: 5px;
+        }
+        .history-filter-dropdown label { display: block; margin-bottom: 5px; font-size: 12px; cursor: pointer; padding: 4px; }
+        .history-filter-dropdown label:hover { background-color: #f5f5f5; }
+
+        .filter-tag { background: #e3f2fd; color: #0d47a1; padding: 4px 8px; border-radius: 12px; font-size: 11px; display: flex; align-items: center; gap: 5px; border: 1px solid #90caf9; margin-top: 2px; }
+        .filter-tag span { cursor: pointer; font-weight: bold; color: #c62828; margin-left: 2px; }
+        .clear-all-tag { background: #ffcdd2; color: #b71c1c; padding: 4px 8px; border-radius: 12px; font-size: 11px; display: flex; align-items: center; gap: 5px; border: 1px solid #ef9a9a; margin-top: 2px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -101,7 +102,7 @@ try {
             <div class="user-id">ID: <?php echo htmlspecialchars($coach_id); ?></div>
         </div>
         <div class="nav-item nav-active" onclick="switchView('team-view', this)">Team Attendance</div>
-        <div class="nav-item" onclick="switchView('manage-requests', this)">Manage Endorsements</div>
+        <div class="nav-item" onclick="switchView('manage-requests', this)">Manage Team Requests</div>
         <div class="nav-item" onclick="switchView('my-filing', this)">My Filing Center</div>
         <div class="nav-item" onclick="switchView('my-requests-view', this)">My Requests</div>
         <div class="nav-item" onclick="switchView('my-attendance', this)">My Attendance Records</div>
@@ -145,23 +146,25 @@ try {
 
         <div id="manage-requests" class="view-content">
             <div class="header">
-                <h2>📋 Pending Requests</h2>
+                <h2>📋 Pending Team Requests</h2>
                 <button class="export-btn" style="background:#f39c12;" onclick="loadAllEndorsements()">Refresh </button>
             </div>
             <div class="container">
-                <h3>Leaves</h3>
+                <h3>Leaves (Endorsement Required)</h3>
                 <table id="leaveEndorseTable">
                     <thead><tr onclick="sortTable('leaveEndorseTable', 0)"><th>Employee ⬍</th><th>Reason</th><th>Action</th></tr></thead>
                     <tbody id="coachLeaveList"></tbody>
                 </table>
-                <h3 style="margin-top:30px;">Overtime</h3>
+                
+                <h3 style="margin-top:30px;">Overtime (Endorsement Required)</h3>
                 <table id="otEndorseTable">
                     <thead><tr onclick="sortTable('otEndorseTable', 0)"><th>Employee ⬍</th><th>Purpose</th><th>Action</th></tr></thead>
                     <tbody id="coachOTList"></tbody>
                 </table>
-                <h3 style="margin-top:30px; color:#e74c3c;">Attendance Disputes</h3>
+                
+                <h3 style="margin-top:30px; color:#e74c3c;">Attendance Disputes (Settles Immediately)</h3>
                 <table id="disputeEndorseTable">
-                    <thead><tr onclick="sortTable('disputeEndorseTable', 0)"><th>Employee ⬍</th><th>Type ⬍</th><th>Reason</th><th>Action</th></tr></thead>
+                    <thead><tr onclick="sortTable('disputeEndorseTable', 0)"><th>Employee ⬍</th><th>Role</th><th>Type ⬍</th><th>Reason</th><th>Action</th></tr></thead>
                     <tbody id="coachDisputeList"></tbody>
                 </table>
             </div>
@@ -202,26 +205,11 @@ try {
         </div>
 
         <div id="my-requests-view" class="view-content">
-            <div class="header" style="background: #8e44ad;">
-                <h2>My Request Status</h2>
-                <button class="export-btn" style="background:#fff; color:#333;" onclick="loadMyRequests()">Refresh</button>
-            </div>
+            <div class="header" style="background: #8e44ad;"><h2>My Request Status</h2><button class="export-btn" style="background:#fff; color:#333;" onclick="loadMyRequests()">Refresh</button></div>
             <div class="container">
-                <h3 style="color:#666;">Leave Requests</h3>
-                <table id="myLeaveTable">
-                    <thead><tr onclick="sortTable('myLeaveTable', 0)"><th>Type ⬍</th><th>Date Range ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Approver</th></tr></thead>
-                    <tbody id="myLeaveLogs"></tbody>
-                </table>
-                <h3 style="color:#666; margin-top:20px;">Overtime Requests</h3>
-                <table id="myOTTable">
-                    <thead><tr onclick="sortTable('myOTTable', 0)"><th>Type ⬍</th><th>Time Range ⬍</th><th>Purpose</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Approver</th></tr></thead>
-                    <tbody id="myOTLogs"></tbody>
-                </table>
-                <h3 style="color:#666; margin-top:20px;">My Disputes</h3>
-                <table id="myDisputeTable">
-                    <thead><tr onclick="sortTable('myDisputeTable', 0)"><th>Type ⬍</th><th>Date ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th></tr></thead>
-                    <tbody id="myDisputeLogs"></tbody>
-                </table>
+                <h3 style="color:#666;">Leave Requests</h3><table id="myLeaveTable"><thead><tr onclick="sortTable('myLeaveTable', 0)"><th>Type ⬍</th><th>Date Range ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Approver</th></tr></thead><tbody id="myLeaveLogs"></tbody></table>
+                <h3 style="color:#666; margin-top:20px;">Overtime Requests</h3><table id="myOTTable"><thead><tr onclick="sortTable('myOTTable', 0)"><th>Type ⬍</th><th>Time Range ⬍</th><th>Purpose</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Approver</th></tr></thead><tbody id="myOTLogs"></tbody></table>
+                <h3 style="color:#666; margin-top:20px;">My Disputes</h3><table id="myDisputeTable"><thead><tr onclick="sortTable('myDisputeTable', 0)"><th>Type ⬍</th><th>Date ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th></tr></thead><tbody id="myDisputeLogs"></tbody></table>
             </div>
         </div>
 
@@ -231,23 +219,8 @@ try {
                 <div style="display:flex;"><input type="date" id="range_start" class="search-box" style="width:130px;" onchange="loadMyAttendance()"><input type="date" id="range_end" class="search-box" style="width:130px; margin-left:5px;" onchange="loadMyAttendance()"></div>
             </div>
             <div class="container">
-                <div style="margin-bottom:10px;">
-                    <select class="search-box" onchange="filterTable('myAttTable', this.value)" style="margin-left:0; width: 150px;">
-                        <option value="">Show All Statuses</option>
-                        <option value="Present">Present</option>
-                        <option value="Late">Late</option>
-                        <option value="Tardy">Tardy</option>
-                        <option value="Absent">Absent</option>
-                        <option value="Overtime">Overtime</option>
-                        <option value="On Leave">On Leave</option>
-                        <option value="Undertime">Undertime</option>
-                        <option value="Duty on Rest Day">Duty on Rest Day</option>
-                    </select>
-                </div>
-                <table id="myAttTable">
-                    <thead><tr onclick="sortTable('myAttTable', 0)"><th>Date ⬍</th><th>In</th><th>Out</th><th>Break In</th><th>Break Out</th><th>Status ⬍</th><th>Hrs ⬍</th></tr></thead>
-                    <tbody id="myAttendanceBody"></tbody>
-                </table>
+                <div style="margin-bottom:10px;"><select class="search-box" onchange="filterTable('myAttTable', this.value)" style="margin-left:0; width: 150px;"><option value="">Show All Statuses</option><option value="Present">Present</option><option value="Late">Late</option><option value="Tardy">Tardy</option><option value="Absent">Absent</option><option value="Overtime">Overtime</option><option value="On Leave">On Leave</option><option value="Undertime">Undertime</option><option value="Duty on Rest Day">Duty on Rest Day</option></select></div>
+                <table id="myAttTable"><thead><tr onclick="sortTable('myAttTable', 0)"><th>Date ⬍</th><th>In</th><th>Out</th><th>Break In</th><th>Break Out</th><th>Status ⬍</th><th>Hrs ⬍</th></tr></thead><tbody id="myAttendanceBody"></tbody></table>
             </div>
         </div>
     </div>
@@ -255,23 +228,40 @@ try {
     <div id="disputeModal" class="modal">
         <div class="modal-box">
             <div class="modal-header">
-                <div class="modal-title">Resolve Dispute</div>
+                <div class="modal-title">Resolve Dispute (Immediate)</div>
                 <span class="close-x" onclick="closeDisputeModal()">×</span>
             </div>
+            
             <div id="disputeModalContent" style="padding:15px; font-size:13px; background:#f9f9f9; border-radius:6px; margin:10px 0;"></div>
-            <label style="display:block; margin-bottom:5px; font-weight:bold;">Set Correct Status:</label>
-            <select id="newDisputeStatus" style="width:100%; padding:10px; margin-bottom:10px;">
-                <option value="Present">Present</option><option value="Late">Late</option><option value="Absent">Absent</option><option value="Overtime">Overtime</option><option value="On Leave">On Leave</option><option value="Duty on Rest Day">Duty on Rest Day</option>
+            
+            <label style="display:block; margin-bottom:5px; font-weight:bold;">Action:</label>
+            <select id="disputeAction" style="width:100%; padding:10px; margin-bottom:10px;" onchange="toggleDisputeFields()">
+                <option value="APPROVE">Approve (Modify Attendance)</option>
+                <option value="DENY">Deny (No Changes)</option>
             </select>
-            <div style="display:flex; gap:10px; margin-bottom:10px;">
-                <div>Proposed In: <input type="time" id="finalTimeIn"></div>
-                <div>Proposed Out: <input type="time" id="finalTimeOut"></div>
+            
+            <div id="approvalFields">
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">Set Correct Status:</label>
+                <select id="newDisputeStatus" style="width:100%; padding:10px; margin-bottom:10px;">
+                    <option value="Present">Present</option>
+                    <option value="Late">Late</option>
+                    <option value="Absent">Absent</option>
+                    <option value="Overtime">Overtime</option>
+                    <option value="On Leave">On Leave</option>
+                    <option value="Duty on Rest Day">Duty on Rest Day</option>
+                </select>
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <div>Proposed In: <input type="time" id="finalTimeIn"></div>
+                    <div>Proposed Out: <input type="time" id="finalTimeOut"></div>
+                </div>
             </div>
+
             <label style="font-weight:bold;">Remarks:</label>
             <textarea id="actionRemarks" rows="2" style="width:100%; margin-bottom:10px;"></textarea>
             <input type="hidden" id="currentDisputeId">
+            
             <div style="display:flex; gap:10px; margin-top:15px;">
-                <button onclick="confirmDispute()" style="flex:2; padding:10px; background:#27ae60; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">Confirm & Approve</button>
+                <button onclick="confirmDispute()" style="flex:2; padding:10px; background:#27ae60; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">Confirm & Settle</button>
                 <button onclick="closeDisputeModal()" style="flex:1; padding:10px; background:#eee; color:#333; border:none; border-radius:5px; cursor:pointer;">Cancel</button>
             </div>
         </div>
@@ -279,21 +269,30 @@ try {
     
     <div id="historyModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title" id="modalTitle">Employee History</div>
-                <span class="close-x" onclick="closeModal()">×</span>
-            </div>
+            <div class="modal-header"><div class="modal-title" id="modalTitle">Employee History</div><span class="close-x" onclick="closeModal()">×</span></div>
             <div style="padding: 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: flex-end;">
-                <span style="font-size: 13px; color: #555; margin-right: 10px;">Filter Range:</span>
-                <input type="date" id="hist_modal_start" class="search-box">
-                <input type="date" id="hist_modal_end" class="search-box" style="margin-left: 5px;">
-                <button class="export-btn" onclick="filterMemberHistory()" style="margin-left: 10px; padding: 6px 12px;">Filter</button>
+                <span style="font-size: 13px; color: #555; margin-right: 10px;">Filter Range:</span><input type="date" id="hist_modal_start" class="search-box"><input type="date" id="hist_modal_end" class="search-box" style="margin-left: 5px;">
+                
+                <div class="history-filter-container">
+                    <button onclick="toggleHistoryFilterMenu()" style="background:#2c3e50; color:white; border:none; padding:8px 15px; border-radius:5px; font-weight:bold; font-size:12px; cursor:pointer;">Filter Status ⇩</button>
+                    <div id="historyFilterMenu" class="history-filter-dropdown">
+                        <label><input type="checkbox" class="hist-status-cb" value="Present" onchange="applyHistoryFilters()"> Present</label>
+                        <label><input type="checkbox" class="hist-status-cb" value="Absent" onchange="applyHistoryFilters()"> Absent</label>
+                        <label><input type="checkbox" class="hist-status-cb" value="Late" onchange="applyHistoryFilters()"> Late</label>
+                        <label><input type="checkbox" class="hist-status-cb" value="Tardy" onchange="applyHistoryFilters()"> Tardy</label>
+                        <label><input type="checkbox" class="hist-status-cb" value="On Leave" onchange="applyHistoryFilters()"> On Leave</label>
+                        <label><input type="checkbox" class="hist-status-cb" value="Overtime" onchange="applyHistoryFilters()"> Overtime</label>
+                        <label><input type="checkbox" class="hist-status-cb" value="Undertime" onchange="applyHistoryFilters()"> Undertime</label>
+                        <label><input type="checkbox" class="hist-status-cb" value="Duty on Rest Day" onchange="applyHistoryFilters()"> Duty on Rest Day</label>
+                    </div>
+                </div>
+                
+                <div id="activeHistoryFilters" style="display:flex; gap:5px; align-items:center; flex-wrap:wrap; margin-left:10px;"></div>
+
+                <button class="export-btn" onclick="filterMemberHistory()" style="margin-left: 10px; padding: 6px 12px;">Go</button>
             </div>
             <div class="modal-body">
-                <table class="history-table">
-                    <thead><tr><th>Date</th><th>Status</th><th>Time In</th><th>Time Out</th><th>Break In</th><th>Break Out</th><th>Lunch</th><th>Hours Worked</th></tr></thead>
-                    <tbody id="modalHistoryBody"></tbody>
-                </table>
+                <table class="history-table"><thead><tr><th>Date</th><th>Status</th><th>Time In</th><th>Time Out</th><th>Break In</th><th>Break Out</th><th>Lunch</th><th>Hours Worked</th></tr></thead><tbody id="modalHistoryBody"></tbody></table>
             </div>
             <div style="padding:10px; background:#fff; text-align:right; border-top:1px solid #ddd; color:#999; font-size:11px;">Total Hours: <span id="totalHoursDisplay">0.00</span></div>
         </div>
@@ -380,12 +379,60 @@ try {
 
         async function loadLeaves() { const res = await fetch(`${API}/management/get_pending_leaves.php?user_id=${COACH_ID}`); const data = await res.json(); document.getElementById('coachLeaveList').innerHTML = data.map(item => `<tr><td><strong>${item.first_name} ${item.last_name}</strong></td><td>"${item.reason}"</td><td><span style="cursor:pointer; color:green;" onclick="endorse(${item.leave_id}, 'leave', 'ENDORSE')">✔</span> <span style="cursor:pointer; color:red; margin-left:10px;" onclick="endorse(${item.leave_id}, 'leave', 'DENY')">❌</span></td></tr>`).join(''); }
         async function loadOT() { const res = await fetch(`${API}/management/get_pending_ot.php?user_id=${COACH_ID}`); const data = await res.json(); document.getElementById('coachOTList').innerHTML = data.map(item => `<tr><td><strong>${item.first_name} ${item.last_name}</strong></td><td>"${item.purpose}"</td><td><span style="cursor:pointer; color:green;" onclick="endorse(${item.ot_id}, 'ot', 'ENDORSE')">✔</span> <span style="cursor:pointer; color:red; margin-left:10px;" onclick="endorse(${item.ot_id}, 'ot', 'DENY')">❌</span></td></tr>`).join(''); }
-        async function loadDisputes() { const res = await fetch(`${API}/management/get_pending_disputes.php?coach_id=${COACH_ID}`); const data = await res.json(); document.getElementById('coachDisputeList').innerHTML = data.map(item => `<tr><td><strong>${item.first_name} ${item.last_name}</strong></td><td>${item.dispute_type}</td><td>${item.reason}</td><td><button onclick="openDisputeModal(${item.dispute_id}, '${item.first_name}', '${item.dispute_date}')" style="background:#27ae60; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Review</button> <span class="action-btn" style="color:red; margin-left:10px;" onclick="denyDispute(${item.dispute_id})">❌</span></td></tr>`).join(''); }
+        
+        async function loadDisputes() { 
+            const res = await fetch(`${API}/management/get_pending_disputes.php?coach_id=${COACH_ID}`); 
+            const data = await res.json(); 
+            document.getElementById('coachDisputeList').innerHTML = data.map(item => `
+                <tr>
+                    <td><strong>${item.first_name} ${item.last_name}</strong></td>
+                    <td style="font-size:10px; color:#555;">${item.role_name || 'Employee'}</td>
+                    <td>${item.dispute_type || 'General'}</td>
+                    <td>${item.reason}</td>
+                    <td>
+                        <button onclick="openDisputeModal(${item.dispute_id}, '${item.first_name}', '${item.dispute_date}')" style="background:#27ae60; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Review & Settle</button> 
+                    </td>
+                </tr>`).join(''); 
+        }
 
-        function openDisputeModal(id, name, date) { document.getElementById('currentDisputeId').value = id; document.getElementById('disputeModalContent').innerText = `Resolving for: ${name} on ${date}`; document.getElementById('disputeModal').style.display = 'flex'; }
+        function openDisputeModal(id, name, date) { 
+            document.getElementById('currentDisputeId').value = id; 
+            document.getElementById('disputeModalContent').innerText = `Resolving for: ${name} on ${date}`; 
+            document.getElementById('disputeAction').value = "APPROVE";
+            toggleDisputeFields();
+            document.getElementById('disputeModal').style.display = 'flex'; 
+        }
+
         function closeDisputeModal() { document.getElementById('disputeModal').style.display = 'none'; }
-        async function confirmDispute() { const id = document.getElementById('currentDisputeId').value; const status = document.getElementById('newDisputeStatus').value; const rem = document.getElementById('actionRemarks').value; const tIn = document.getElementById('finalTimeIn').value; const tOut = document.getElementById('finalTimeOut').value; await fetch(`${API}/management/resolve_dispute.php`, { method: 'POST', body: JSON.stringify({ dispute_id: id, action: 'APPROVE', new_status: status, remarks: rem, time_in: tIn, time_out: tOut }) }); closeDisputeModal(); loadDisputes(); }
-        async function denyDispute(id) { if(!confirm("Deny?")) return; await fetch(`${API}/management/resolve_dispute.php`, { method: 'POST', body: JSON.stringify({ dispute_id: id, action: 'DENY' }) }); loadDisputes(); }
+        
+        function toggleDisputeFields() {
+            const action = document.getElementById('disputeAction').value;
+            // Hide the status and time inputs if Denying
+            document.getElementById('approvalFields').style.display = (action === 'APPROVE') ? 'block' : 'none';
+        }
+
+        async function confirmDispute() { 
+            const id = document.getElementById('currentDisputeId').value; 
+            const action = document.getElementById('disputeAction').value; 
+            const rem = document.getElementById('actionRemarks').value; 
+            
+            let payload = { dispute_id: id, action: action, remarks: rem };
+
+            // Only attach new status/time if Approving
+            if (action === 'APPROVE') {
+                payload.new_status = document.getElementById('newDisputeStatus').value;
+                payload.time_in = document.getElementById('finalTimeIn').value;
+                payload.time_out = document.getElementById('finalTimeOut').value;
+            }
+            
+            await fetch(`${API}/management/resolve_dispute.php`, { 
+                method: 'POST', 
+                body: JSON.stringify(payload) 
+            }); 
+            closeDisputeModal(); 
+            loadDisputes(); 
+        }
+        
         async function endorse(id, type, act) { if(!confirm(act + "?")) return; let endpoint = type === 'leave' ? '/management/endorse_leave.php' : '/management/endorse_overtime.php'; await fetch(`${API}${endpoint}`, { method: 'POST', body: JSON.stringify({ [type === 'leave' ? 'leave_id' : 'ot_id']: id, coach_id: COACH_ID, action: act }) }); if (type === 'leave') loadLeaves(); if (type === 'ot') loadOT(); }
         
         async function submitRequest(type) { 
@@ -407,16 +454,33 @@ try {
         
         async function loadMyAttendance() { const r = await fetch(`${API}/users/get_my_attendance.php?employee_id=${COACH_ID}&start_date=${document.getElementById('range_start').value}&end_date=${document.getElementById('range_end').value}`); const d = await r.json(); document.getElementById('myAttendanceBody').innerHTML = d.map(x => `<tr><td>${x.date}</td><td>${x.time_in||'--'}</td><td>${x.time_out||'--'}</td><td>${x.break_in}</td><td>${x.break_out}</td><td><span class="status-pill status-${x.status.replace(/\s/g,'')}">${x.status}</span></td><td>${x.total_hours||0}</td></tr>`).join(''); }
 
+        // --- HISTORY FILTER LOGIC ---
         async function viewMemberHistory(empId, name) {
             document.getElementById('modalTitle').innerText = `${name} - History`;
             document.getElementById('current_view_id').value = empId; 
-            const d = new Date();
-            const s = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
-            const e = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
-            document.getElementById('hist_modal_start').value = s;
-            document.getElementById('hist_modal_end').value = e;
-            document.getElementById('historyModal').style.display = 'flex';
+            const d = new Date(), s = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0], e = d.toISOString().split('T')[0];
+            document.getElementById('hist_modal_start').value = s; document.getElementById('hist_modal_end').value = e;
+            document.querySelectorAll('.hist-status-cb').forEach(cb => cb.checked = false); 
+            document.getElementById('historyFilterMenu').style.display = 'none';
+            document.getElementById('activeHistoryFilters').innerHTML = ''; 
             filterMemberHistory();
+            document.getElementById('historyModal').style.display = 'flex';
+        }
+
+        function toggleHistoryFilterMenu() { const menu = document.getElementById('historyFilterMenu'); menu.style.display = menu.style.display === 'block' ? 'none' : 'block'; }
+        function applyHistoryFilters() {
+            const checkedBoxes = document.querySelectorAll('.hist-status-cb:checked');
+            const selectedStatuses = Array.from(checkedBoxes).map(cb => cb.value.trim());
+            const tagsContainer = document.getElementById('activeHistoryFilters');
+            tagsContainer.innerHTML = '';
+            
+            selectedStatuses.forEach(status => {
+                tagsContainer.innerHTML += `<div class="filter-tag">${status} <span onclick="removeHistoryFilter('${status}')">✖</span></div>`;
+            });
+            if (selectedStatuses.length > 0) {
+                tagsContainer.innerHTML += `<div class="clear-all-tag" onclick="clearHistoryFilters()">Clear All ✖</div>`;
+            }
+            filterMemberHistory(); 
         }
 
         async function filterMemberHistory() {
@@ -425,14 +489,24 @@ try {
             const end = document.getElementById('hist_modal_end').value;
             const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${empId}&start_date=${start}&end_date=${end}`);
             const data = await res.json();
+            
+            const checkedBoxes = document.querySelectorAll('.hist-status-cb:checked');
+            const selectedStatuses = Array.from(checkedBoxes).map(cb => cb.value.trim());
+            
             let total = 0;
-            document.getElementById('modalHistoryBody').innerHTML = data.length ? data.map(row => {
+            const filteredData = data.filter(row => selectedStatuses.length === 0 || selectedStatuses.includes(row.status));
+
+            document.getElementById('modalHistoryBody').innerHTML = filteredData.length ? filteredData.map(row => {
                 total += parseFloat(row.total_hours || 0);
                 return `<tr><td>${row.date}</td><td><span class="status-pill status-${row.status}">${row.status}</span></td><td>${row.time_in}</td><td>${row.time_out}</td><td>${row.break_in}</td><td>${row.break_out}</td><td>${row.lunch_break}</td><td>${row.total_hours}</td></tr>`;
             }).join('') : '<tr><td colspan="8" style="text-align:center">No records</td></tr>';
             document.getElementById('totalHoursDisplay').innerText = total.toFixed(2);
         }
 
+        function removeHistoryFilter(val) { const cb = Array.from(document.querySelectorAll('.hist-status-cb')).find(c => c.value === val); if(cb) { cb.checked = false; applyHistoryFilters(); } }
+        function clearHistoryFilters() { document.querySelectorAll('.hist-status-cb').forEach(cb => cb.checked = false); applyHistoryFilters(); }
+        
+        window.onclick = function(e) { if (!e.target.closest('.history-filter-container')) { const menu = document.getElementById('historyFilterMenu'); if(menu && menu.style.display === 'block') menu.style.display = 'none'; } }
         function closeModal() { document.getElementById('historyModal').style.display = 'none'; }
 
         window.onload = function() {

@@ -204,59 +204,21 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             background: white;
         }
         
-        /* --- HISTORY FILTER DROPDOWN (Fixed Z-Index & Position) --- */
-        .history-filter-container {
-            position: relative;
-            display: inline-block;
-        }
+        /* --- HISTORY FILTER DROPDOWN --- */
+        .history-filter-container { position: relative; display: inline-block; }
         .history-filter-dropdown {
-            display: none;
-            position: absolute;
-            top: 100%;
-            left: 0;
-            background: white;
-            border: 1px solid #ddd;
-            padding: 10px;
-            border-radius: 5px;
-            z-index: 10000; /* FIXED: Ensures dropdown appears ON TOP of table */
-            width: 170px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
-            text-align: left;
-            margin-top: 5px;
+            display: none; position: absolute; top: 100%; left: 0; background: white; border: 1px solid #ddd; padding: 10px; border-radius: 5px; 
+            z-index: 10000; width: 170px; box-shadow: 0 8px 16px rgba(0,0,0,0.15); text-align: left; margin-top: 5px;
         }
-        .history-filter-dropdown label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 12px;
-            cursor: pointer;
-            padding: 4px;
-        }
-        .history-filter-dropdown label:hover {
-            background-color: #f5f5f5;
-        }
+        .history-filter-dropdown label { display: block; margin-bottom: 5px; font-size: 12px; cursor: pointer; padding: 4px; }
+        .history-filter-dropdown label:hover { background-color: #f5f5f5; }
 
-        /* --- ACTIVE FILTER TAGS (New Feature) --- */
+        /* --- ACTIVE FILTER TAGS --- */
         .filter-tag {
-            background: #e3f2fd;
-            color: #0d47a1;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            border: 1px solid #90caf9;
-            margin-top: 2px;
+            background: #e3f2fd; color: #0d47a1; padding: 4px 8px; border-radius: 12px; font-size: 11px; display: flex; align-items: center; gap: 5px; border: 1px solid #90caf9; margin-top: 2px;
         }
-        .filter-tag span {
-            cursor: pointer;
-            font-weight: bold;
-            color: #c62828;
-            margin-left: 2px;
-        }
-        .filter-tag span:hover {
-            color: #b71c1c;
-        }
+        .filter-tag span { cursor: pointer; font-weight: bold; color: #c62828; margin-left: 2px; }
+        .filter-tag span:hover { color: #b71c1c; }
     </style>
 </head>
 <body>
@@ -297,7 +259,6 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
                     <input type="date" id="master_end" class="search-input">
                     
                     <button class="btn btn-filter" onclick="openFilterModal()">Filter Options ⇩</button>
-
                     <button class="btn btn-export" onclick="exportMasterExcel()">📂 Export</button>
                 </div>
             </div>
@@ -552,12 +513,33 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             <span class="close-x" onclick="closeModal()">×</span>
             <h3>Resolve Dispute</h3>
             <div id="disputeInfo" style="font-size:13px; margin-bottom:15px; background:#f0f4f8; padding:10px; border-radius:6px;"></div>
-            Correction: <select id="resStatus" class="form-group" style="width:100%; padding:10px;"><option value="Present">Present</option><option value="Late">Late</option><option value="Duty on Rest Day">Duty on Rest Day</option></select>
-            <div style="display:flex; gap:10px; margin-bottom:10px;">Adjusted In: <input type="time" id="resIn"> Adjusted Out: <input type="time" id="resOut"></div>
-            <textarea id="resRemarks" placeholder="Internal remarks..."></textarea>
+            
+            <label style="display:block; margin-bottom:5px; font-weight:bold;">Action:</label>
+            <select id="disputeAction" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:5px;" onchange="toggleDisputeFields()">
+                <option value="APPROVE">Approve (Modify Attendance)</option>
+                <option value="DENY">Deny (No Changes)</option>
+            </select>
+            
+            <div id="approvalFields">
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">Correction:</label>
+                <select id="resStatus" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:5px;">
+                    <option value="Present">Present</option>
+                    <option value="Late">Late</option>
+                    <option value="Absent">Absent</option>
+                    <option value="Overtime">Overtime</option>
+                    <option value="On Leave">On Leave</option>
+                    <option value="Duty on Rest Day">Duty on Rest Day</option>
+                </select>
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <div style="flex:1;">In: <input type="time" id="resIn" style="width:100%; padding:8px; box-sizing:border-box;"></div>
+                    <div style="flex:1;">Out: <input type="time" id="resOut" style="width:100%; padding:8px; box-sizing:border-box;"></div>
+                </div>
+            </div>
+
+            <textarea id="resRemarks" placeholder="Internal remarks..." style="width:100%; padding:10px; box-sizing:border-box;"></textarea>
             <input type="hidden" id="resId">
             <div style="display:flex; gap:10px; margin-top:15px;">
-                <button onclick="confirmDispute('APPROVE')" class="btn btn-edit" style="flex:2;">Override & Approve</button>
+                <button onclick="confirmDispute()" class="btn btn-edit" style="flex:2;">Confirm & Settle</button>
                 <button onclick="closeModal()" class="btn" style="flex:1; background:#eee; color:#333;">Cancel</button>
             </div>
         </div>
@@ -605,7 +587,6 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
 
         function renderMasterTable() {
             let filteredData = globalMasterData;
-            
             // Client-side filtering for Status
             if (activeStatusFilters.length > 0) {
                 filteredData = filteredData.filter(row => activeStatusFilters.includes(row.attendance_status));
@@ -641,7 +622,7 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             renderMasterTable();
         }
 
-        // --- HISTORY MODAL FILTER LOGIC (DROPDOWN + TAGS) ---
+        // --- HISTORY MODAL FILTER LOGIC ---
         function toggleHistoryFilterMenu() {
             const menu = document.getElementById('historyFilterMenu');
             menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
@@ -650,30 +631,24 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
         function applyHistoryFilters() {
             const checkedBoxes = document.querySelectorAll('.hist-status-cb:checked');
             const selectedStatuses = Array.from(checkedBoxes).map(cb => cb.value.trim());
-            
-            // 1. UPDATE TAGS
             const tagsContainer = document.getElementById('activeHistoryFilters');
-            tagsContainer.innerHTML = ''; // Clear previous
+            tagsContainer.innerHTML = ''; 
+            
             selectedStatuses.forEach(status => {
-                tagsContainer.innerHTML += `
-                    <div class="filter-tag">
-                        ${status} 
-                        <span onclick="removeHistoryFilter('${status}')">✖</span>
-                    </div>`;
+                tagsContainer.innerHTML += `<div class="filter-tag">${status} <span onclick="removeHistoryFilter('${status}')">✖</span></div>`;
             });
 
-            // 2. FILTER TABLE
+            // FILTER TABLE ROWS
             const tableBody = document.getElementById('modalHistoryBody');
             const rows = tableBody.getElementsByTagName('tr');
             let totalHours = 0;
 
             for (let i = 0; i < rows.length; i++) {
                 const row = rows[i];
-                const statusCell = row.cells[6]; // Index 6 is Status Column
+                const statusCell = row.cells[6]; 
                 if (!statusCell) continue;
                 const statusText = statusCell.textContent.trim();
                 
-                // Show if no filters selected OR if matches selected status
                 if (selectedStatuses.length === 0 || selectedStatuses.includes(statusText)) {
                     row.style.display = '';
                     totalHours += parseFloat(row.cells[7].textContent) || 0;
@@ -684,29 +659,65 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             document.getElementById('totalHrs').innerText = totalHours.toFixed(2);
         }
 
-        // REMOVE A TAG (AND UNCHECK THE BOX)
         function removeHistoryFilter(statusToRemove) {
             const checkbox = Array.from(document.querySelectorAll('.hist-status-cb')).find(cb => cb.value === statusToRemove);
-            if (checkbox) {
-                checkbox.checked = false;
-                applyHistoryFilters(); // Re-run filter logic
-            }
+            if (checkbox) { checkbox.checked = false; applyHistoryFilters(); }
         }
         
-        // Close history filter menu when clicking outside
         window.onclick = function(event) {
             if (!event.target.closest('.history-filter-container')) {
                 const menu = document.getElementById('historyFilterMenu');
-                if (menu && menu.style.display === 'block') {
-                    menu.style.display = 'none';
-                }
+                if (menu && menu.style.display === 'block') menu.style.display = 'none';
             }
         }
 
+        // --- DISPUTE LOADING (UPDATED FOR IMMEDIATE RESOLUTION) ---
         async function loadDisputes() { 
-            const res = await fetch(`${API}/admin/get_endorsed_disputes.php`); 
+            // Load Pending Disputes for Immediate Resolution
+            const res = await fetch(`${API}/management/get_pending_disputes.php?coach_id=${MY_ID}`); 
             const data = await res.json(); 
-            document.getElementById('disputeQueue').innerHTML = data.map(d => `<tr><td><strong>${d.first_name} ${d.last_name}</strong></td><td>${d.dispute_date}</td><td>${d.dispute_type || 'N/A'}</td><td>"${d.reason}"</td><td><span class="pill status-${d.status}">${d.status}</span></td><td><button class="btn btn-edit" onclick="openDispute(${d.dispute_id}, '${d.first_name}', '${d.dispute_date}')">🔍 Review</button></td></tr>`).join(''); 
+            document.getElementById('disputeQueue').innerHTML = data.map(d => `
+                <tr>
+                    <td><strong>${d.first_name} ${d.last_name}</strong></td>
+                    <td>${d.dispute_date}</td>
+                    <td>${d.dispute_type || 'N/A'}</td>
+                    <td>"${d.reason}"</td>
+                    <td><span class="pill status-${d.status}">${d.status}</span></td>
+                    <td><button class="btn btn-edit" onclick="openDispute(${d.dispute_id}, '${d.first_name}', '${d.dispute_date}')">🔍 Review</button></td>
+                </tr>`).join(''); 
+        }
+
+        // --- OPEN DISPUTE MODAL ---
+        function openDispute(id, name, date) { 
+            document.getElementById('resId').value = id; 
+            document.getElementById('disputeInfo').innerText = `Resolving for: ${name} (${date})`;
+            document.getElementById('disputeAction').value = "APPROVE";
+            toggleDisputeFields();
+            document.getElementById('disputeModal').style.display = 'flex'; 
+        }
+
+        function toggleDisputeFields() {
+            const action = document.getElementById('disputeAction').value;
+            document.getElementById('approvalFields').style.display = (action === 'APPROVE') ? 'block' : 'none';
+        }
+
+        // --- CONFIRM DISPUTE (APPROVE/DENY) ---
+        async function confirmDispute() { 
+            const id = document.getElementById('resId').value;
+            const action = document.getElementById('disputeAction').value;
+            const remarks = document.getElementById('resRemarks').value;
+            
+            let payload = { dispute_id: id, action: action, remarks: remarks };
+            
+            if (action === 'APPROVE') {
+                payload.new_status = document.getElementById('resStatus').value;
+                payload.time_in = document.getElementById('resIn').value;
+                payload.time_out = document.getElementById('resOut').value;
+            }
+
+            await fetch(`${API}/management/resolve_dispute.php`, { method:'POST', body:JSON.stringify(payload) }); 
+            closeModal(); 
+            loadDisputes(); 
         }
 
         async function loadApprovals() { 
@@ -728,19 +739,14 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             document.getElementById('myAttendanceBody').innerHTML = data.map(r => `<tr><td>${r.date}</td><td>${r.time_in}</td><td>${r.time_out}</td><td>${r.status}</td><td>${r.total_hours}</td></tr>`).join(''); 
         }
 
-        // --- HIERARCHY LOADER (Coach = Role 2, Highlighted) ---
         async function loadHierarchy() { 
             const res = await fetch(`${API}/admin/get_all_attendance.php`); 
             const data = await res.json(); 
-            
             document.getElementById("hierarchyBody").innerHTML = data.map(log => { 
                 let name = `<strong>${log.first_name} ${log.last_name}</strong>`;
-
-                // Role ID 2 (Coaches) Highlight (Dark Blue)
                 if (log.role_id == 2) { 
                      name = `<span class="coach-pill" onclick="viewTeam(${log.employee_id}, '${log.first_name}')">👤 ${log.first_name} (Coach)</span>`;
                 }
-                
                 return `<tr><td>${name}</td><td>${log.latest_date||'-'}</td><td>${log.latest_status||'Inactive'}</td><td><button class="btn btn-edit" onclick="openHistory(${log.employee_id}, '${log.first_name}')">👁️ logs</button></td></tr>`; 
             }).join(''); 
         }
@@ -748,21 +754,15 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
         async function loadRequestHistory() { const res = await fetch(`${API}/admin/get_request_history.php?start_date=${document.getElementById('hist_start').value}&end_date=${document.getElementById('hist_end').value}`); const data = await res.json(); document.getElementById('historyBody').innerHTML = data.map(i => `<tr><td>${i.employee_name}</td><td>${i.category}</td><td>${i.type}</td><td><span class="pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td></tr>`).join(''); }
         async function finalApprove(id, t, a) { await fetch(`${API}/admin/final_approve_${t==='leave'?'leave':'overtime'}.php`, { method: 'POST', body: JSON.stringify({ [t+'_id']: id, action: a }) }); loadApprovals(); }
 
-        function openDispute(id, name, date) { document.getElementById('resId').value = id; document.getElementById('disputeInfo').innerText = `Resolving for: ${name} (${date})`; document.getElementById('disputeModal').style.display = 'flex'; }
-        async function confirmDispute(action) { const payload = { dispute_id: document.getElementById('resId').value, action: action, new_status: document.getElementById('resStatus').value, time_in: document.getElementById('resIn').value, time_out: document.getElementById('resOut').value, remarks: document.getElementById('resRemarks').value }; await fetch(`${API}/management/resolve_dispute.php`, { method:'POST', body:JSON.stringify(payload) }); closeModal(); loadDisputes(); }
         async function openHistory(empId, name) { 
             viewingMemberId = empId; 
             document.getElementById('modalTitle').innerText = `${name} - Logs`; 
-            // Set default dates for the modal date pickers
             const d = new Date(), s = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0], e = d.toISOString().split('T')[0]; 
             document.getElementById('hist_mod_start').value = s; 
             document.getElementById('hist_mod_end').value = e; 
-            
-            // Clear any previous filters
             document.querySelectorAll('.hist-status-cb').forEach(cb => cb.checked = false);
             document.getElementById('historyFilterMenu').style.display = 'none';
-            document.getElementById('activeHistoryFilters').innerHTML = ''; // Clear tags
-
+            document.getElementById('activeHistoryFilters').innerHTML = ''; 
             fetchMemberHistory(); 
             document.getElementById('historyModal').style.display = 'flex'; 
         }
