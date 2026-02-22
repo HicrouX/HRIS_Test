@@ -60,9 +60,12 @@ if (isset($_GET['edit_id'])) {
         .nav-item:hover { background: #f0f4f8; color: var(--primary-blue); }
         .nav-active { background: #FFC107; color: #000 !important; font-weight: bold; }
         .logout-btn { color: #e74c3c !important; font-weight: bold; }
-        .main-content { flex: 1; background: #fff; margin: 15px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
-        .view-content { display: none; flex-direction: column; height: 100%; overflow-y: auto; }
+        
+        /* SCROLLING FIX APPLIED HERE */
+        .main-content { flex: 1; min-height: 0; background: #fff; margin: 15px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+        .view-content { display: none; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
         .active-view { display: flex; }
+        
         .header { background: var(--primary-blue); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; }
         .container { padding: 20px 40px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -171,7 +174,7 @@ if (isset($_GET['edit_id'])) {
 
                 <h3 style="margin-top:40px; color:#e74c3c;">Attendance Disputes (Immediate Settlement)</h3>
                 <table id="adminDisputeTable">
-                    <thead><tr onclick="sortTable('adminDisputeTable', 0)"><th>Employee ⬍</th><th>Role</th><th>Type ⬍</th><th>Reason</th><th>Remarks</th><th>Action</th></tr></thead>
+                    <thead><tr onclick="sortTable('adminDisputeTable', 0)"><th>Employee ⬍</th><th>Role</th><th>Type ⬍</th><th>Reason</th><th>Admin Remarks</th><th>Action</th></tr></thead>
                     <tbody id="adminDisputeQueue"></tbody>
                 </table>
             </div>
@@ -193,7 +196,7 @@ if (isset($_GET['edit_id'])) {
                 <h3 style="color:#666; margin-top:40px;">My Overtime Requests</h3>
                 <table id="myOTTable"><thead><tr onclick="sortTable('myOTTable', 0)"><th>Type ⬍</th><th>Time Range ⬍</th><th>Purpose</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Approved By</th></tr></thead><tbody id="myOTLogs"></tbody></table>
                 <h3 style="color:#666; margin-top:40px;">My Disputes</h3>
-                <table id="myDisputeTable"><thead><tr onclick="sortTable('myDisputeTable', 0)"><th>Type ⬍</th><th>Date ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Remarks</th></tr></thead><tbody id="myDisputeLogs"></tbody></table>
+                <table id="myDisputeTable"><thead><tr onclick="sortTable('myDisputeTable', 0)"><th>Type ⬍</th><th>Date ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Admin Remarks</th></tr></thead><tbody id="myDisputeLogs"></tbody></table>
             </div>
         </div>
 
@@ -536,7 +539,6 @@ if (isset($_GET['edit_id'])) {
             const getApprover = (item) => item.admin_first ? `<span style="color:#27ae60; font-weight:600;">${item.admin_first} ${item.admin_last}</span>` : '<span style="color:#ccc;">-</span>';
             const renderRow = (item) => `<tr><td>${item.sub_type}</td><td>${item.start_date}<br>${item.end_date}</td><td>${item.reason}</td><td><span class="status-pill status-${item.status}">${item.status}</span></td><td>${item.created_at}</td><td>${getApprover(item)}</td></tr>`;
             
-            // ✅ FIX: Added Admin Remarks column using item.remarks
             const renderDisp = (item) => `<tr><td>${item.sub_type}</td><td>${item.start_date}</td><td>${item.reason}</td><td><span class="status-pill status-${item.status}">${item.status}</span></td><td>${item.created_at}</td><td style="color:blue; font-style:italic;">${item.remarks || '--'}</td></tr>`;
             
             document.getElementById("myLeaveLogs").innerHTML = leaves.map(renderRow).join('');

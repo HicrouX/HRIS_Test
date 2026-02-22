@@ -46,9 +46,9 @@ try {
         .nav-item:hover { background: #f0f4f8; color: var(--primary-blue); }
         .nav-active { background: var(--accent-blue); color: #fff !important; box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3); }
         
-        /* Main Content */
-        .main-content { flex: 1; background: #fff; margin: 15px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
-        .content-view { display: none; flex-direction: column; height: 100%; overflow-y: auto; }
+        /* Main Content - SCROLLING FIX APPLIED HERE */
+        .main-content { flex: 1; min-height: 0; background: #fff; margin: 15px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+        .content-view { display: none; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
         .view-active { display: flex; }
         
         .view-header { background: var(--primary-blue); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
@@ -162,7 +162,7 @@ try {
                 
                 <h3 style="color:#666; margin-top:20px;">My Disputes</h3>
                 <table id="myDisputeTable">
-                    <thead><tr onclick="sortTable('myDisputeTable', 0)"><th>Type ⬍</th><th>Date ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Remarks</th></tr></thead>
+                    <thead><tr onclick="sortTable('myDisputeTable', 0)"><th>Type ⬍</th><th>Date ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Admin Remarks</th></tr></thead>
                     <tbody id="myDisputeLogs"></tbody>
                 </table>
             </div>
@@ -212,8 +212,8 @@ try {
                                 <div><label style="font-weight:bold; color:red; font-size:11px;">Proposed Out:</label><input type="time" id="d_time_out"></div>
                             </div>
                         </div>
-                        <textarea id="d_reason" placeholder="Explain discrepancy..." rows="3" required style="grid-column: span 2;"></textarea>
-                        <button type="button" class="submit-btn" style="background:#e74c3c; grid-column: span 2;" onclick="submitRequest('dispute')">Submit Dispute</button>
+                        <textarea id="d_reason" placeholder="Explain the discrepancy..." rows="3" required style="grid-column: span 2;"></textarea>
+                        <button type="button" class="submit-btn" style="background: #e74c3c; grid-column: span 2;" onclick="submitRequest('dispute')">Submit Dispute</button>
                     </form>
                 </div>
             </div>
@@ -309,7 +309,6 @@ try {
                         <td>${getApprover(item)}</td>
                     </tr>`;
 
-                // ✅ FIX: Added Remarks Cell
                 const renderDisp = (item) => `
                     <tr>
                         <td>${item.sub_type}</td>

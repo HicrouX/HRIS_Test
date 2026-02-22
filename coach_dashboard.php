@@ -34,8 +34,9 @@ try {
         .nav-item { padding: 12px 20px; margin: 5px 0; border-radius: 8px; cursor: pointer; color: var(--text-gray); font-size: 14px; transition: 0.2s; }
         .nav-active { background: #FFC107; color: #000 !important; font-weight: bold; }
         
-        .main-content { flex: 1; background: #fff; margin: 15px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
-        .view-content { display: none; flex-direction: column; height: 100%; overflow-y: auto; }
+        /* SCROLLING FIX FOR MAIN CONTENT APPLIED HERE */
+        .main-content { flex: 1; min-height: 0; background: #fff; margin: 15px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+        .view-content { display: none; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
         .active-view { display: flex; }
         
         .header { background: var(--primary-blue); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; }
@@ -55,13 +56,17 @@ try {
         .status-Late, .status-Tardy { background: #fff3e0; color: #e67e22; }
         .status-Absent { background: #ffebee; color: #c62828; }
         
+        /* MODAL STYLES */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: white; padding: 0; border-radius: 4px; width: 1000px; max-height: 90vh; display: flex; flex-direction: column; }
         .modal-header { background: #fff; padding: 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;}
         .modal-title { font-weight: bold; color: #333; }
         .close-x { font-size: 24px; cursor: pointer; color: #999; }
         
-        .history-table th { background: #eee; color: #333; font-weight: bold; font-size: 12px; border-bottom: 2px solid #ddd; padding: 10px; }
+        /* ✅ SCROLLING FIX FOR MODAL BODY APPLIED HERE */
+        .modal-body { flex: 1; overflow-y: auto; min-height: 0; }
+        
+        .history-table th { background: #eee; color: #333; font-weight: bold; font-size: 12px; border-bottom: 2px solid #ddd; padding: 10px; position: sticky; top: 0; z-index: 1; }
         .history-table td { background: #fff; color: #555; font-size: 12px; border-bottom: 1px solid #eee; padding: 10px; vertical-align: middle; }
         .clickable-name { color: #1e4d8c; font-weight: bold; cursor: pointer; text-decoration: underline; }
         
@@ -164,7 +169,7 @@ try {
                 
                 <h3 style="margin-top:30px; color:#e74c3c;">Attendance Disputes (Settles Immediately)</h3>
                 <table id="disputeEndorseTable">
-                    <thead><tr onclick="sortTable('disputeEndorseTable', 0)"><th>Employee ⬍</th><th>Role</th><th>Type ⬍</th><th>Reason</th><th>Remarks</th><th>Action</th></tr></thead>
+                    <thead><tr onclick="sortTable('disputeEndorseTable', 0)"><th>Employee ⬍</th><th>Role</th><th>Type ⬍</th><th>Reason</th><th>Admin Remarks</th><th>Action</th></tr></thead>
                     <tbody id="coachDisputeList"></tbody>
                 </table>
             </div>
@@ -209,7 +214,7 @@ try {
             <div class="container">
                 <h3 style="color:#666;">Leave Requests</h3><table id="myLeaveTable"><thead><tr onclick="sortTable('myLeaveTable', 0)"><th>Type ⬍</th><th>Date Range ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Approver</th></tr></thead><tbody id="myLeaveLogs"></tbody></table>
                 <h3 style="color:#666; margin-top:20px;">Overtime Requests</h3><table id="myOTTable"><thead><tr onclick="sortTable('myOTTable', 0)"><th>Type ⬍</th><th>Time Range ⬍</th><th>Purpose</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Approver</th></tr></thead><tbody id="myOTLogs"></tbody></table>
-                <h3 style="color:#666; margin-top:20px;">My Disputes</h3><table id="myDisputeTable"><thead><tr onclick="sortTable('myDisputeTable', 0)"><th>Type ⬍</th><th>Date ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Remarks</th></tr></thead><tbody id="myDisputeLogs"></tbody></table>
+                <h3 style="color:#666; margin-top:20px;">My Disputes</h3><table id="myDisputeTable"><thead><tr onclick="sortTable('myDisputeTable', 0)"><th>Type ⬍</th><th>Date ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Admin Remarks</th></tr></thead><tbody id="myDisputeLogs"></tbody></table>
             </div>
         </div>
 
@@ -269,7 +274,10 @@ try {
     
     <div id="historyModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header"><div class="modal-title" id="modalTitle">Employee History</div><span class="close-x" onclick="closeModal()">×</span></div>
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">Employee History</div>
+                <span class="close-x" onclick="closeModal()">×</span>
+            </div>
             <div style="padding: 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: flex-end;">
                 <span style="font-size: 13px; color: #555; margin-right: 10px;">Filter Range:</span><input type="date" id="hist_modal_start" class="search-box"><input type="date" id="hist_modal_end" class="search-box" style="margin-left: 5px;">
                 
@@ -291,9 +299,25 @@ try {
 
                 <button class="export-btn" onclick="filterMemberHistory()" style="margin-left: 10px; padding: 6px 12px;">Go</button>
             </div>
+            
             <div class="modal-body">
-                <table class="history-table"><thead><tr><th>Date</th><th>Status</th><th>Time In</th><th>Time Out</th><th>Break In</th><th>Break Out</th><th>Lunch</th><th>Hours Worked</th></tr></thead><tbody id="modalHistoryBody"></tbody></table>
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Time In</th>
+                            <th>Time Out</th>
+                            <th>Break In</th>
+                            <th>Break Out</th>
+                            <th>Lunch</th>
+                            <th>Hours Worked</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalHistoryBody"></tbody>
+                </table>
             </div>
+            
             <div style="padding:10px; background:#fff; text-align:right; border-top:1px solid #ddd; color:#999; font-size:11px;">Total Hours: <span id="totalHoursDisplay">0.00</span></div>
         </div>
     </div>
@@ -373,7 +397,6 @@ try {
             document.getElementById("myLeaveLogs").innerHTML = leaves.length ? leaves.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}<br>${i.end_date}</td><td>${i.reason}</td><td><span class="status-pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td><td>${getApprover(i)}</td></tr>`).join('') : '<tr><td colspan="6">No records</td></tr>';
             document.getElementById("myOTLogs").innerHTML = overtime.length ? overtime.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}<br>${i.end_date}</td><td>${i.reason}</td><td><span class="status-pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td><td>${getApprover(i)}</td></tr>`).join('') : '<tr><td colspan="6">No records</td></tr>';
             
-            // FIX: Using i.remarks to match DB schema
             document.getElementById("myDisputeLogs").innerHTML = disputes.length ? disputes.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}</td><td>${i.reason}</td><td><span class="status-pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td><td style="color:blue; font-style:italic;">${i.remarks || '--'}</td></tr>`).join('') : '<tr><td colspan="6">No records</td></tr>';
         }
 
@@ -385,7 +408,6 @@ try {
         async function loadDisputes() { 
             const res = await fetch(`${API}/management/get_pending_disputes.php?coach_id=${COACH_ID}`); 
             const data = await res.json(); 
-            // FIX: Using item.remarks to match DB schema
             document.getElementById('coachDisputeList').innerHTML = data.map(item => `
                 <tr>
                     <td><strong>${item.first_name} ${item.last_name}</strong></td>

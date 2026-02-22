@@ -116,8 +116,9 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
         .nav-item:hover { background: #f0f2f5; color: var(--accent); }
         .nav-active { background: var(--warning); color: #000 !important; font-weight: bold; }
         
-        .main-content { flex: 1; background: #fff; margin: 15px; border-radius: 15px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
-        .view-content { display: none; flex-direction: column; height: 100%; overflow-y: auto; }
+        /* ✅ SCROLLING FIX FOR TABS APPLIED HERE */
+        .main-content { flex: 1; min-height: 0; background: #fff; margin: 15px; border-radius: 15px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+        .view-content { display: none; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
         .active-view { display: flex; }
         
         .header { background: var(--primary); color: white; padding: 20px 35px; display: flex; justify-content: space-between; align-items: center; }
@@ -171,6 +172,9 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
         .modal-wide { width: 1000px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; }
         .close-x { float: right; font-size: 24px; cursor: pointer; color: #999; line-height: 1; margin-top: -10px; margin-right: -10px;}
         .close-x:hover { color: #333; }
+
+        /* ✅ SCROLLING FIX FOR MODALS APPLIED HERE */
+        .modal-body { flex: 1; overflow-y: auto; min-height: 0; }
 
         .form-card { background: #fafbfc; padding: 25px; border-radius: 8px; border-left: 5px solid var(--accent); margin-bottom: 20px; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
@@ -344,8 +348,9 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
                 </div>
                 <div class="form-card" style="border-left: 5px solid #e74c3c;">
                     <h3 style="color: #e74c3c;">Attendance Dispute</h3>
-                    <form id="disputeForm" class="form-grid">
-                        <input type="text" value="Self-Filing" class="readonly-field" readonly>
+                    <form id="disputeForm" class="form-grid" style="grid-template-columns: 1fr 1fr;">
+                        <input type="text" value="Cluster: Auto-Detected" class="readonly-field" readonly>
+                        <input type="text" value="Coach: Auto-Detected" class="readonly-field" readonly>
                         <select id="d_type" required onchange="toggleProposedTime(this.value)">
                             <option value="" disabled selected>Select Dispute Type</option>
                             <option>Forgot Time In/Out</option>
@@ -355,14 +360,14 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
                             <option>Breaktime</option>
                             <option>Lunch Break</option>
                         </select>
-                        <div style="grid-column: span 2;"><label style="font-size:12px; font-weight:bold;">Date of Incident:</label><input type="date" id="d_date"></div>
+                        <div style="grid-column: span 2;"><label style="font-size:12px; font-weight:bold;">Date of Incident:</label><input type="date" id="d_date" required></div>
                         <div id="timeInputDiv" style="display:none; grid-column: span 2;">
                             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                                 <div><label style="font-weight:bold; color:red; font-size:11px;">Proposed In:</label><input type="time" id="d_time_in"></div>
                                 <div><label style="font-weight:bold; color:red; font-size:11px;">Proposed Out:</label><input type="time" id="d_time_out"></div>
                             </div>
                         </div>
-                        <textarea id="d_reason" placeholder="Explain the discrepancy..." rows="3"></textarea>
+                        <textarea id="d_reason" placeholder="Explain the discrepancy..." rows="3" required style="grid-column: span 2;"></textarea>
                         <button type="button" class="submit-btn" style="background: #e74c3c; grid-column: span 2;" onclick="submitRequest('dispute')">Submit Dispute</button>
                     </form>
                 </div>
@@ -425,12 +430,14 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
         <div class="modal-card modal-wide">
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:15px; margin-bottom:15px;">
                 <h3 id="modalTitle" style="margin:0; font-size:20px;">Employee logs</h3>
+                
                 <div style="display:flex; gap:8px; align-items:center;">
                     <input type="date" id="hist_mod_start" class="date-filter-input">
                     <span style="font-size:13px; color:#555;">to</span>
                     <input type="date" id="hist_mod_end" class="date-filter-input">
+                    <button class="submit-btn" style="width: auto; padding: 5px 15px;" onclick="fetchMemberHistory()">Filter</button>
                     
-                    <div class="history-filter-container">
+                    <div class="history-filter-container" style="margin-left: 10px;">
                         <button onclick="toggleHistoryFilterMenu()" style="background:#2c3e50; color:white; border:none; padding:8px 15px; border-radius:5px; font-weight:bold; font-size:12px; cursor:pointer;">Filter Status ⇩</button>
                         <div id="historyFilterMenu" class="history-filter-dropdown">
                             <label><input type="checkbox" class="hist-status-cb" value="Present" onchange="applyHistoryFilters()"> Present</label>
@@ -446,13 +453,13 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
                     
                     <div id="activeHistoryFilters" style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;"></div>
 
-                    <button onclick="exportIndividualExcel()" style="background:#27ae60; color:white; border:none; padding:8px 15px; border-radius:5px; font-weight:bold; font-size:12px; cursor:pointer;">📂 Individual Export</button>
+                    <button onclick="exportIndividualExcel()" style="background:#27ae60; color:white; border:none; padding:8px 15px; border-radius:5px; font-weight:bold; font-size:12px; cursor:pointer; margin-left:10px;">📂 Individual Export</button>
                     <span class="close-x" onclick="closeModal()" style="margin-left:15px; font-size:24px;">×</span>
                 </div>
             </div>
             
-            <div style="overflow-y:auto; flex:1; max-height:500px;">
-                <table id="modalHistTable">
+            <div class="modal-body">
+                <table id="modalHistTable" class="history-table">
                     <thead>
                         <tr style="background:#f9fafb; text-transform:uppercase; font-size:11px; color:#777;">
                             <th onclick="sortTable('modalHistTable',0)">Date ⬍</th>
@@ -462,7 +469,7 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
                             <th>Break Out</th>
                             <th>Lunch</th>
                             <th>Status</th>
-                            <th>Work Hours</th>
+                            <th onclick="sortTable('modalHistTable',7)">Work Hours ⬍</th>
                         </tr>
                     </thead>
                     <tbody id="modalHistoryBody"></tbody>
@@ -570,13 +577,35 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
         let globalMasterData = []; 
         let activeStatusFilters = [];
 
+        // ✅ FIXED UNIVERSAL SORTING FUNCTION (Handles Text, Dates, and Numbers perfectly)
         function sortTable(tid, n) {
             let table = document.getElementById(tid), tbody = table.tBodies[0], rows = Array.from(tbody.rows);
             let asc = table.getAttribute('data-asc') === 'true';
-            rows.sort((a,b) => {
-                let v1 = a.cells[n].innerText.toLowerCase(), v2 = b.cells[n].innerText.toLowerCase();
-                return asc ? v1.localeCompare(v2) : v2.localeCompare(v1);
+            
+            rows.sort((a, b) => {
+                let v1 = a.cells[n].innerText.trim();
+                let v2 = b.cells[n].innerText.trim();
+
+                // Number parsing
+                let num1 = parseFloat(v1.replace(/[^0-9.-]+/g,""));
+                let num2 = parseFloat(v2.replace(/[^0-9.-]+/g,""));
+                
+                // Date parsing
+                let date1 = Date.parse(v1);
+                let date2 = Date.parse(v2);
+
+                if (!isNaN(date1) && !isNaN(date2) && v1.includes('-')) {
+                    // Sort as Dates
+                    return asc ? date1 - date2 : date2 - date1;
+                } else if (!isNaN(num1) && !isNaN(num2) && !isNaN(v1.charAt(0))) {
+                    // Sort as Numbers
+                    return asc ? num1 - num2 : num2 - num1;
+                } else {
+                    // Sort as String (Fallback)
+                    return asc ? v1.localeCompare(v2) : v2.localeCompare(v1);
+                }
             });
+            
             rows.forEach(r => tbody.appendChild(r));
             table.setAttribute('data-asc', !asc);
         }
@@ -689,12 +718,9 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             }
         }
 
-        // --- DISPUTE LOADING (UPDATED FOR IMMEDIATE RESOLUTION) ---
         async function loadDisputes() { 
-            // Load Pending Disputes for Immediate Resolution
             const res = await fetch(`${API}/management/get_pending_disputes.php?coach_id=${MY_ID}`); 
             const data = await res.json(); 
-            // ✅ FIX: Added Remarks Cell
             document.getElementById('disputeQueue').innerHTML = data.map(d => `
                 <tr>
                     <td><strong>${d.first_name} ${d.last_name}</strong></td>
@@ -743,21 +769,20 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
         async function loadApprovals() { 
             const [l, o] = await Promise.all([fetch(`${API}/admin/get_endorsed_leaves.php`), fetch(`${API}/admin/get_endorsed_ot.php`)]); 
             const leaves = await l.json(), ots = await o.json(); 
-            document.getElementById('leaveQueue').innerHTML = leaves.map(i => `<tr><td><strong>${i.first_name} ${i.last_name}</strong></td><td>${i.leave_type}</td><td>${i.start_date}</td><td>${i.reason}</td><td>${i.endorser_name}</td><td><button class="btn btn-edit" onclick="finalApprove(${i.leave_id}, 'leave', 'APPROVE')">✔ Approve</button></td></tr>`).join(''); 
-            document.getElementById('otQueue').innerHTML = ots.map(i => `<tr><td><strong>${i.first_name} ${i.last_name}</strong></td><td>OT</td><td>${i.start_time}</td><td>${i.purpose}</td><td>${i.endorser_name}</td><td><button class="btn btn-edit" onclick="finalApprove(${i.ot_id}, 'ot', 'APPROVE')">✔ Approve</button></td></tr>`).join(''); 
+            document.getElementById('leaveQueue').innerHTML = leaves.map(i => `<tr><td><strong>${i.first_name} ${i.last_name}</strong></td><td><span class="status-pill status-Endorsed">${i.leave_type || i.ot_type || 'Unknown'}</span></td><td>${i.start_date||i.start_time}</td><td>"${i.reason||i.purpose}"</td><td style="font-weight:bold; color:#e67e22;">${i.endorser_name||'-'}</td><td><span class="action-icon" style="color:green;" onclick="finalApprove(${i.leave_id||i.ot_id}, 'leave', 'APPROVE')">✔</span> <span class="action-icon" style="color:red;" onclick="finalApprove(${i.leave_id||i.ot_id}, 'leave', 'DENY')">❌</span></td></tr>`).join('') || `<tr><td colspan='6' style='text-align:center; color:#999;'>No pending items</td></tr>`; 
+            document.getElementById('otQueue').innerHTML = ots.map(i => `<tr><td><strong>${i.first_name} ${i.last_name}</strong></td><td><span class="status-pill status-Endorsed">${i.leave_type || i.ot_type || 'Unknown'}</span></td><td>${i.start_date||i.start_time}</td><td>"${i.reason||i.purpose}"</td><td style="font-weight:bold; color:#e67e22;">${i.endorser_name||'-'}</td><td><span class="action-icon" style="color:green;" onclick="finalApprove(${i.leave_id||i.ot_id}, 'ot', 'APPROVE')">✔</span> <span class="action-icon" style="color:red;" onclick="finalApprove(${i.leave_id||i.ot_id}, 'ot', 'DENY')">❌</span></td></tr>`).join('') || `<tr><td colspan='6' style='text-align:center; color:#999;'>No pending items</td></tr>`; 
         }
 
         async function loadMyRequests() { 
             const res = await fetch(`${API}/users/get_my_request_history.php?employee_id=${MY_ID}`); 
             const data = await res.json(); 
-            // ✅ FIX: Added Remarks Cell
             document.getElementById('myRequestsBody').innerHTML = data.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}</td><td><span class="pill status-${i.status}">${i.status}</span></td><td style="color:blue; font-style:italic;">${i.remarks || '--'}</td><td>${new Date(i.created_at).toLocaleDateString()}</td></tr>`).join(''); 
         }
 
         async function loadMyAttendance() { 
             const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${MY_ID}`); 
             const data = await res.json(); 
-            document.getElementById('myAttendanceBody').innerHTML = data.map(r => `<tr><td>${r.date}</td><td>${r.time_in}</td><td>${r.time_out}</td><td>${r.status}</td><td>${r.total_hours}</td></tr>`).join(''); 
+            document.getElementById('myAttendanceBody').innerHTML = data.map(r => `<tr><td>${r.date}</td><td>${r.time_in}</td><td>${r.time_out}</td><td><span class="pill status-${(r.status||'').replace(/\s/g,'')}">${r.status}</span></td><td>${r.total_hours}</td></tr>`).join(''); 
         }
 
         async function loadHierarchy() { 
@@ -768,7 +793,7 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
                 if (log.role_id == 2) { 
                      name = `<span class="coach-pill" onclick="viewTeam(${log.employee_id}, '${log.first_name}')">👤 ${log.first_name} (Coach)</span>`;
                 }
-                return `<tr><td>${name}</td><td>${log.latest_date||'-'}</td><td>${log.latest_status||'Inactive'}</td><td><button class="btn btn-edit" onclick="openHistory(${log.employee_id}, '${log.first_name}')">👁️ logs</button></td></tr>`; 
+                return `<tr><td>${name}</td><td>${log.latest_date||'-'}</td><td><span class="pill status-${(log.latest_status||'').replace(/\s/g,'')}">${log.latest_status||'Inactive'}</span></td><td><button class="btn btn-edit" onclick="openHistory(${log.employee_id}, '${log.first_name}')">👁️ logs</button></td></tr>`; 
             }).join(''); 
         }
 
@@ -787,7 +812,9 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             fetchMemberHistory(); 
             document.getElementById('historyModal').style.display = 'flex'; 
         }
+        
         async function fetchMemberHistory() { const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${viewingMemberId}&start_date=${document.getElementById('hist_mod_start').value}&end_date=${document.getElementById('hist_mod_end').value}`); const data = await res.json(); let total = 0; document.getElementById('modalHistoryBody').innerHTML = data.map(r => { total += parseFloat(r.total_hours || 0); return `<tr><td>${r.date}</td><td>${r.time_in||'--:--'}</td><td>${r.time_out||'--:--'}</td><td>${r.break_in||'--:--'}</td><td>${r.break_out||'--:--'}</td><td>${r.lunch_break||'0'}</td><td><span class="pill status-${(r.status||'').replace(/\s/g,'')}">${r.status}</span></td><td>${r.total_hours}</td></tr>`; }).join(''); document.getElementById('totalHrs').innerText = total.toFixed(2); applyHistoryFilters(); }
+        
         async function submitRequest(t) { let form = { employee_id: MY_ID }; if(t==='dispute'){ form.date = document.getElementById('d_date').value; form.dispute_type = document.getElementById('d_type').value; form.reason = document.getElementById('d_reason').value; if(form.dispute_type.includes('Forgot')) form.reason += " [Proposed: "+document.getElementById('d_time_in').value+"-"+document.getElementById('d_time_out').value+"]"; } const res = await fetch(`${API}/users/file_${t==='dispute'?'dispute':t}.php`, { method:'POST', body:JSON.stringify(form) }); const r = await res.json(); alert(r.success||r.error); if(r.success) loadMyRequests(); }
 
         function confirmDelete(id) { if(confirm("CRITICAL: Permanently DELETE this record?")) { window.location.href = `super_admin_dashboard.php?delete_id=${id}`; } }
@@ -795,7 +822,7 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
         function exportMasterExcel() { window.location.href = `${API}/export/export_excel.php?mode=ALL&start_date=${document.getElementById('master_start').value}&end_date=${document.getElementById('master_end').value}`; }
         function exportIndividualExcel() { window.location.href = `${API}/export/export_excel.php?mode=INDIVIDUAL&employee_id=${viewingMemberId}&start_date=${document.getElementById('hist_mod_start').value}&end_date=${document.getElementById('hist_mod_end').value}`; }
         function toggleProposedTime(v) { document.getElementById('timeInputDiv').style.display = v.includes('Forgot') ? 'block' : 'none'; }
-        async function viewTeam(coachId, coachName) { document.getElementById('backBtn').style.display = 'inline-block'; document.getElementById('hierarchyTitle').innerText = `Team: ${coachName}`; const res = await fetch(`${API}/management/get_team_attendance.php?coach_id=${coachId}`); const data = await res.json(); document.getElementById("hierarchyBody").innerHTML = data.map(log => `<tr><td>${log.first_name} ${log.last_name}</td><td>${log.latest_date||'-'}</td><td>${log.latest_status||'-'}</td><td><button class="btn btn-edit" onclick="openHistory(${log.employee_id}, '${log.first_name}')">👁️ logs</button></td></tr>`).join(''); }
+        async function viewTeam(coachId, coachName) { document.getElementById('backBtn').style.display = 'inline-block'; document.getElementById('hierarchyTitle').innerText = `Team: ${coachName}`; const res = await fetch(`${API}/management/get_team_attendance.php?coach_id=${coachId}`); const data = await res.json(); document.getElementById("hierarchyBody").innerHTML = data.map(log => `<tr><td>${log.first_name} ${log.last_name}</td><td>${log.latest_date||'-'}</td><td><span class="pill status-${(log.latest_status||'').replace(/\s/g,'')}">${log.latest_status||'Inactive'}</span></td><td><button class="btn btn-edit" onclick="openHistory(${log.employee_id}, '${log.first_name}')">👁️ logs</button></td></tr>`).join(''); }
         function resetToLeaders() { document.getElementById('backBtn').style.display = 'none'; document.getElementById('hierarchyTitle').innerText = "Management Hierarchy"; loadHierarchy(); }
 
         window.onload = function() {
