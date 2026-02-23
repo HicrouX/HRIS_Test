@@ -91,13 +91,6 @@ if (isset($_GET['edit_id'])) {
     $edit_record = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($edit_record) $edit_mode = true;
 }
-
-// Fetch Admin Name for UI
-$admin_name = "Super Administrator";
-$stmt = $pdo->prepare("SELECT first_name, last_name FROM employees WHERE employee_id = ?");
-$stmt->execute([$user_id]);
-$u = $stmt->fetch();
-if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -109,8 +102,6 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
         
         .sidebar { width: 260px; background: #fff; padding: 25px; display: flex; flex-direction: column; border-right: 1px solid #ddd; }
         .logo { color: var(--primary); font-weight: 800; font-size: 26px; margin-bottom: 20px; text-align: center; }
-        .user-badge { text-align: center; padding: 15px; background: #f8f9fa; border-radius: 12px; margin-bottom: 20px; }
-        .role-tag { font-size: 9px; background: var(--danger); color: white; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; font-weight: bold; }
         
         .nav-item { padding: 12px 18px; margin: 3px 0; border-radius: 10px; cursor: pointer; color: #555; font-size: 13.5px; text-decoration: none; display: flex; align-items: center; transition: 0.2s; }
         .nav-item:hover { background: #f0f2f5; color: var(--accent); }
@@ -227,66 +218,29 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
 </head>
 <body>
     <div class="sidebar">
-        <div class="logo">iREPLY</div>
-        <div class="user-badge">
-            <span class="role-tag">Super Admin Mode</span>
-            <div style="font-weight:bold; margin-top:5px;"><?php echo htmlspecialchars($admin_name); ?></div>
-        </div>
+        <div class="logo">iREPLY SYSTEM</div>
         <nav>
-            <a href="#" class="nav-item nav-active" onclick="switchView('master-ctrl', this)">🛠 System Master Control</a>
+            <a href="#" class="nav-item nav-active" onclick="switchView('management-view', this)">📊 Management Hierarchy</a>
             <a href="#" class="nav-item" onclick="switchView('approvals', this)">✅ Final Sign-offs</a>
             <a href="#" class="nav-item" onclick="switchView('disputes-view', this)">⚠️ Resolution Center</a>
-            <a href="#" class="nav-item" onclick="switchView('management-view', this)">📊 Management Hierarchy</a>
             <a href="#" class="nav-item" onclick="switchView('history-view', this)">📜 Global Request Logs</a>
             
-            <div style="margin-top:15px; padding-top:10px; border-top:1px solid #eee; font-size:11px; color:#999; font-weight:bold;">MY WORKSPACE</div>
-            <a href="#" class="nav-item" onclick="switchView('filing-center', this)">📝 My Filing Center</a>
-            <a href="#" class="nav-item" onclick="switchView('my-requests', this)">🔄 My Request Status</a>
-            <a href="#" class="nav-item" onclick="switchView('my-attendance', this)">👤 My Attendance</a>
-            
-            <a href="logout.php" class="nav-item" style="color:var(--danger); margin-top:20px;">🚪 Logout</a>
+            <a href="logout.php" class="nav-item" style="color:var(--danger); margin-top:40px;">🚪 System Logout</a>
         </nav>
     </div>
 
     <div class="main-content">
-        <div id="master-ctrl" class="view-content active-view">
+        <div id="management-view" class="view-content active-view">
             <div class="header">
-                <h2>System-Wide Override</h2>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <select id="filter_role" class="search-input" onchange="loadFullData()" style="cursor:pointer; width:120px;">
-                        <option value="">All Roles</option>
-                        <option value="1">Employees</option>
-                        <option value="2">Coaches</option>
-                        <option value="3">Admins</option>
-                    </select>
-                    <input type="date" id="master_start" class="search-input">
-                    <input type="date" id="master_end" class="search-input">
-                    
-                    <button class="btn btn-filter" onclick="openFilterModal()">Filter Options ⇩</button>
-                    <button class="btn btn-export" onclick="exportMasterExcel()">📂 Export</button>
+                <div>
+                    <button id="backBtn" onclick="resetToLeaders()" style="display:none; cursor:pointer; background:rgba(255,255,255,0.2); border:none; padding:5px 10px; color:white; border-radius:15px; font-size:11px;">⬅ Back to Coaches</button>
+                    <h2 id="hierarchyTitle">Management Hierarchy</h2>
                 </div>
             </div>
             <div class="container">
-                <table id="mainTable">
-                    <thead>
-                        <tr>
-                            <th onclick="sortTable('mainTable',0)">Personnel ⬍</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th style="text-align:right;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="masterData"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div id="disputes-view" class="view-content">
-            <div class="header"><h2>⚠️ Resolution Center (Disputes)</h2></div>
-            <div class="container">
-                <table id="disputeTable">
-                    <thead><tr><th onclick="sortTable('disputeTable',0)">Employee ⬍</th><th onclick="sortTable('disputeTable',1)">Date ⬍</th><th onclick="sortTable('disputeTable',2)">Type ⬍</th><th onclick="sortTable('disputeTable',3)">Reason ⬍</th><th onclick="sortTable('disputeTable',4)">Remarks ⬍</th><th onclick="sortTable('disputeTable',5)">Status ⬍</th><th>Review</th></tr></thead>
-                    <tbody id="disputeQueue"></tbody>
+                <table id="hierarchyTable">
+                    <thead><tr><th onclick="sortTable('hierarchyTable',0)">Personnel ⬍</th><th onclick="sortTable('hierarchyTable',1)">Last Active ⬍</th><th onclick="sortTable('hierarchyTable',2)">Status ⬍</th><th>Logs</th></tr></thead>
+                    <tbody id="hierarchyBody"></tbody>
                 </table>
             </div>
         </div>
@@ -301,103 +255,33 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             </div>
         </div>
 
-        <div id="management-view" class="view-content">
-            <div class="header">
-                <div>
-                    <button id="backBtn" onclick="resetToLeaders()" style="display:none; cursor:pointer; background:rgba(255,255,255,0.2); border:none; padding:5px 10px; color:white; border-radius:15px; font-size:11px;">⬅ Back</button>
-                    <h2 id="hierarchyTitle">Management Hierarchy</h2>
-                </div>
+        <div id="disputes-view" class="view-content">
+            <div class="header"><h2>⚠️ Resolution Center (Disputes)</h2></div>
+            <div class="container">
+                <table id="disputeTable">
+                    <thead><tr><th onclick="sortTable('disputeTable',0)">Employee ⬍</th><th onclick="sortTable('disputeTable',1)">Date ⬍</th><th onclick="sortTable('disputeTable',2)">Type ⬍</th><th onclick="sortTable('disputeTable',3)">Reason ⬍</th><th onclick="sortTable('disputeTable',4)">Remarks ⬍</th><th onclick="sortTable('disputeTable',5)">Status ⬍</th><th>Review</th></tr></thead>
+                    <tbody id="disputeQueue"></tbody>
+                </table>
             </div>
-            <div class="container"><table id="hierarchyTable"><thead><tr><th onclick="sortTable('hierarchyTable',0)">Personnel ⬍</th><th onclick="sortTable('hierarchyTable',1)">Last Active ⬍</th><th onclick="sortTable('hierarchyTable',2)">Status ⬍</th><th>Logs</th></tr></thead><tbody id="hierarchyBody"></tbody></table></div>
         </div>
 
         <div id="history-view" class="view-content">
             <div class="header">
                 <h2>📜 Global Request Logs</h2>
                 <div style="display:flex; gap:10px;">
+                    <select id="hist_category" class="search-input">
+                        <option value="ALL">All Categories</option>
+                        <option value="Leave">Leave</option>
+                        <option value="Overtime">Overtime</option>
+                        <option value="Dispute">Dispute</option>
+                    </select>
                     <input type="date" id="hist_start" class="search-input">
                     <input type="date" id="hist_end" class="search-input">
                     <button class="btn btn-edit" onclick="loadRequestHistory()">Filter</button>
+                    <button class="btn btn-export" onclick="exportRequestHistory()">📂 Export Logs</button>
                 </div>
             </div>
             <div class="container"><table id="globalHistoryTable"><thead><tr><th onclick="sortTable('globalHistoryTable',0)">Employee ⬍</th><th onclick="sortTable('globalHistoryTable',1)">Category ⬍</th><th onclick="sortTable('globalHistoryTable',2)">Type ⬍</th><th onclick="sortTable('globalHistoryTable',3)">Status ⬍</th><th onclick="sortTable('globalHistoryTable',4)">Filed On ⬍</th></tr></thead><tbody id="historyBody"></tbody></table></div>
-        </div>
-
-        <div id="filing-center" class="view-content">
-            <div class="header"><h2>My Filing Center</h2></div>
-            <div class="container">
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:30px;">
-                    <div class="form-card">
-                        <h3>📝 File Leave</h3>
-                        <div class="form-grid">
-                            <select id="l_type"><option>Sick Leave</option><option>Vacation Leave</option></select><div></div>
-                            <input type="date" id="l_start"><input type="date" id="l_end">
-                            <textarea id="l_reason" placeholder="Reason for leave..."></textarea>
-                            <button class="submit-btn" style="grid-column: span 2;" onclick="submitRequest('leave')">Submit Leave</button>
-                        </div>
-                    </div>
-                    <div class="form-card" style="border-left-color: var(--success);">
-                        <h3>⏰ File Overtime</h3>
-                        <div class="form-grid">
-                            <select id="ot_type"><option>Regular Overtime</option><option>Duty on Rest Day</option></select><div></div>
-                            <input type="datetime-local" id="ot_start"><input type="datetime-local" id="ot_end">
-                            <textarea id="ot_purpose" placeholder="Purpose of OT..."></textarea>
-                            <button class="submit-btn" style="background:var(--success); grid-column: span 2;" onclick="submitRequest('ot')">Submit Overtime</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-card" style="border-left: 5px solid #e74c3c;">
-                    <h3 style="color: #e74c3c;">Attendance Dispute</h3>
-                    <form id="disputeForm" class="form-grid" style="grid-template-columns: 1fr 1fr;">
-                        <input type="text" value="Cluster: Auto-Detected" class="readonly-field" readonly>
-                        <input type="text" value="Coach: Auto-Detected" class="readonly-field" readonly>
-                        <select id="d_type" required onchange="toggleProposedTime(this.value)">
-                            <option value="" disabled selected>Select Dispute Type</option>
-                            <option>Forgot Time In/Out</option>
-                            <option>System Error</option>
-                            <option>Official Business</option>
-                            <option>Incorrect Status</option>
-                            <option>Breaktime</option>
-                            <option>Lunch Break</option>
-                        </select>
-                        <div style="grid-column: span 2;"><label style="font-size:12px; font-weight:bold;">Date of Incident:</label><input type="date" id="d_date" required></div>
-                        <div id="timeInputDiv" style="display:none; grid-column: span 2;">
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                                <div><label style="font-weight:bold; color:red; font-size:11px;">Proposed In:</label><input type="time" id="d_time_in"></div>
-                                <div><label style="font-weight:bold; color:red; font-size:11px;">Proposed Out:</label><input type="time" id="d_time_out"></div>
-                            </div>
-                        </div>
-                        <textarea id="d_reason" placeholder="Explain the discrepancy..." rows="3" required style="grid-column: span 2;"></textarea>
-                        <button type="button" class="submit-btn" style="background: #e74c3c; grid-column: span 2;" onclick="submitRequest('dispute')">Submit Dispute</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <div id="my-requests" class="view-content">
-            <div class="header" style="background: #8e44ad;">
-                <h2>My Request Status</h2>
-                <button class="btn btn-refresh" onclick="loadMyRequests()">🔄 Refresh List</button>
-            </div>
-            <div class="container">
-                <table id="myReqTable">
-                    <thead>
-                        <tr>
-                            <th onclick="sortTable('myReqTable',0)">Type ⬍</th>
-                            <th onclick="sortTable('myReqTable',1)">Range ⬍</th>
-                            <th onclick="sortTable('myReqTable',2)">Status ⬍</th>
-                            <th onclick="sortTable('myReqTable',3)">Remarks ⬍</th>
-                            <th onclick="sortTable('myReqTable',4)">Filed On ⬍</th>
-                        </tr>
-                    </thead>
-                    <tbody id="myRequestsBody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div id="my-attendance" class="view-content">
-            <div class="header"><h2>My Personal Records</h2></div>
-            <div class="container"><table id="myAttTable"><thead><tr><th onclick="sortTable('myAttTable',0)">Date ⬍</th><th>In</th><th>Out</th><th>Status</th><th>Hrs</th></tr></thead><tbody id="myAttendanceBody"></tbody></table></div>
         </div>
     </div>
 
@@ -610,45 +494,16 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             table.setAttribute('data-asc', !asc);
         }
 
+        // ⚠️ Master Control Switch View Logic Removed
         function switchView(viewId, btn) {
             document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active-view'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('nav-active'));
             document.getElementById(viewId).classList.add('active-view');
             btn.classList.add('nav-active');
-            if(viewId === 'master-ctrl') loadFullData();
             if(viewId === 'disputes-view') loadDisputes();
             if(viewId === 'approvals') loadApprovals();
             if(viewId === 'management-view') loadHierarchy();
             if(viewId === 'history-view') loadRequestHistory();
-            if(viewId === 'my-requests') loadMyRequests();
-            if(viewId === 'my-attendance') loadMyAttendance();
-        }
-
-        async function loadFullData() {
-            const s = document.getElementById('master_start').value, e = document.getElementById('master_end').value, role = document.getElementById('filter_role').value;
-            const res = await fetch(`${API}/admin/get_master_attendance.php?start_date=${s}&end_date=${e}&role=${role}`);
-            const data = await res.json();
-            globalMasterData = data; 
-            renderMasterTable();
-        }
-
-        function renderMasterTable() {
-            let filteredData = globalMasterData;
-            // Client-side filtering for Status
-            if (activeStatusFilters.length > 0) {
-                filteredData = filteredData.filter(row => activeStatusFilters.includes(row.attendance_status));
-            }
-
-            document.getElementById('masterData').innerHTML = filteredData.map(row => {
-                const hasRecord = row.attendance_id != null;
-                const statusDisplay = hasRecord 
-                    ? `<span class="pill status-${row.attendance_status.replace(/\s/g,'')}">${row.attendance_status}</span>` 
-                    : '<span style="color:#999; font-size:11px;">No Record</span>';
-                const actions = hasRecord 
-                    ? `<a href="super_admin_dashboard.php?edit_id=${row.attendance_id}" class="btn btn-edit">✏️</a> <button onclick="confirmDelete(${row.attendance_id})" class="btn btn-delete">🗑️</button>`
-                    : '<span style="font-size:10px; color:#ccc;">N/A</span>';
-                return `<tr><td><strong>${row.first_name} ${row.last_name}</strong></td><td><span style="font-size:10px; color:#888;">${row.role_name || '-'}</span></td><td>${statusDisplay}</td><td style="text-align:right;">${actions}</td></tr>`;
-            }).join('');
         }
 
         // --- FILTER MODAL LOGIC (MASTER DASHBOARD) ---
@@ -773,18 +628,6 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             document.getElementById('otQueue').innerHTML = ots.map(i => `<tr><td><strong>${i.first_name} ${i.last_name}</strong></td><td><span class="status-pill status-Endorsed">${i.leave_type || i.ot_type || 'Unknown'}</span></td><td>${i.start_date||i.start_time}</td><td>"${i.reason||i.purpose}"</td><td style="font-weight:bold; color:#e67e22;">${i.endorser_name||'-'}</td><td><span class="action-icon" style="color:green;" onclick="finalApprove(${i.leave_id||i.ot_id}, 'ot', 'APPROVE')">✔</span> <span class="action-icon" style="color:red;" onclick="finalApprove(${i.leave_id||i.ot_id}, 'ot', 'DENY')">❌</span></td></tr>`).join('') || `<tr><td colspan='6' style='text-align:center; color:#999;'>No pending items</td></tr>`; 
         }
 
-        async function loadMyRequests() { 
-            const res = await fetch(`${API}/users/get_my_request_history.php?employee_id=${MY_ID}`); 
-            const data = await res.json(); 
-            document.getElementById('myRequestsBody').innerHTML = data.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}</td><td><span class="pill status-${i.status}">${i.status}</span></td><td style="color:blue; font-style:italic;">${i.remarks || '--'}</td><td>${new Date(i.created_at).toLocaleDateString()}</td></tr>`).join(''); 
-        }
-
-        async function loadMyAttendance() { 
-            const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${MY_ID}`); 
-            const data = await res.json(); 
-            document.getElementById('myAttendanceBody').innerHTML = data.map(r => `<tr><td>${r.date}</td><td>${r.time_in}</td><td>${r.time_out}</td><td><span class="pill status-${(r.status||'').replace(/\s/g,'')}">${r.status}</span></td><td>${r.total_hours}</td></tr>`).join(''); 
-        }
-
         async function loadHierarchy() { 
             const res = await fetch(`${API}/admin/get_all_attendance.php`); 
             const data = await res.json(); 
@@ -797,7 +640,35 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
             }).join(''); 
         }
 
-        async function loadRequestHistory() { const res = await fetch(`${API}/admin/get_request_history.php?start_date=${document.getElementById('hist_start').value}&end_date=${document.getElementById('hist_end').value}`); const data = await res.json(); document.getElementById('historyBody').innerHTML = data.map(i => `<tr><td>${i.employee_name}</td><td>${i.category}</td><td>${i.type}</td><td><span class="pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td></tr>`).join(''); }
+        // --- UPDATED EXPORT FUNCTIONS ---
+        function exportHierarchy() {
+            window.location.href = `${API}/export/export_excel.php?mode=ROSTER`;
+        }
+
+        function exportRequestHistory() {
+            const start = document.getElementById('hist_start').value;
+            const end = document.getElementById('hist_end').value;
+            const cat = document.getElementById('hist_category').value;
+            window.location.href = `${API}/export/export_excel.php?mode=HISTORY&start_date=${start}&end_date=${end}&category=${cat}`;
+        }
+        
+        function exportIndividualExcel() {
+            if(!viewingMemberId) return;
+            const start = document.getElementById('hist_mod_start').value;
+            const end = document.getElementById('hist_mod_end').value;
+            window.location.href = `${API}/export/export_excel.php?mode=INDIVIDUAL&employee_id=${viewingMemberId}&start_date=${start}&end_date=${end}`;
+        }
+
+        async function loadRequestHistory() { 
+            const start = document.getElementById('hist_start').value;
+            const end = document.getElementById('hist_end').value;
+            const cat = document.getElementById('hist_category').value;
+            
+            const res = await fetch(`${API}/admin/get_request_history.php?start_date=${start}&end_date=${end}&category=${cat}`); 
+            const data = await res.json(); 
+            document.getElementById('historyBody').innerHTML = data.map(i => `<tr><td>${i.employee_name}</td><td><span class="pill" style="background:#eee; color:#333;">${i.category}</span></td><td>${i.type}</td><td><span class=\"pill status-${i.status}\">${i.status}</span></td><td>${i.created_at}</td></tr>`).join(''); 
+        }
+
         async function finalApprove(id, t, a) { await fetch(`${API}/admin/final_approve_${t==='leave'?'leave':'overtime'}.php`, { method: 'POST', body: JSON.stringify({ [t+'_id']: id, action: a }) }); loadApprovals(); }
 
         async function openHistory(empId, name) { 
@@ -815,21 +686,15 @@ if($u) $admin_name = $u['first_name'] . ' ' . $u['last_name'];
         
         async function fetchMemberHistory() { const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${viewingMemberId}&start_date=${document.getElementById('hist_mod_start').value}&end_date=${document.getElementById('hist_mod_end').value}`); const data = await res.json(); let total = 0; document.getElementById('modalHistoryBody').innerHTML = data.map(r => { total += parseFloat(r.total_hours || 0); return `<tr><td>${r.date}</td><td>${r.time_in||'--:--'}</td><td>${r.time_out||'--:--'}</td><td>${r.break_in||'--:--'}</td><td>${r.break_out||'--:--'}</td><td>${r.lunch_break||'0'}</td><td><span class="pill status-${(r.status||'').replace(/\s/g,'')}">${r.status}</span></td><td>${r.total_hours}</td></tr>`; }).join(''); document.getElementById('totalHrs').innerText = total.toFixed(2); applyHistoryFilters(); }
         
-        async function submitRequest(t) { let form = { employee_id: MY_ID }; if(t==='dispute'){ form.date = document.getElementById('d_date').value; form.dispute_type = document.getElementById('d_type').value; form.reason = document.getElementById('d_reason').value; if(form.dispute_type.includes('Forgot')) form.reason += " [Proposed: "+document.getElementById('d_time_in').value+"-"+document.getElementById('d_time_out').value+"]"; } const res = await fetch(`${API}/users/file_${t==='dispute'?'dispute':t}.php`, { method:'POST', body:JSON.stringify(form) }); const r = await res.json(); alert(r.success||r.error); if(r.success) loadMyRequests(); }
-
-        function confirmDelete(id) { if(confirm("CRITICAL: Permanently DELETE this record?")) { window.location.href = `super_admin_dashboard.php?delete_id=${id}`; } }
         function closeModal() { document.querySelectorAll('.overlay').forEach(m => m.style.display = 'none'); }
-        function exportMasterExcel() { window.location.href = `${API}/export/export_excel.php?mode=ALL&start_date=${document.getElementById('master_start').value}&end_date=${document.getElementById('master_end').value}`; }
-        function exportIndividualExcel() { window.location.href = `${API}/export/export_excel.php?mode=INDIVIDUAL&employee_id=${viewingMemberId}&start_date=${document.getElementById('hist_mod_start').value}&end_date=${document.getElementById('hist_mod_end').value}`; }
-        function toggleProposedTime(v) { document.getElementById('timeInputDiv').style.display = v.includes('Forgot') ? 'block' : 'none'; }
+
         async function viewTeam(coachId, coachName) { document.getElementById('backBtn').style.display = 'inline-block'; document.getElementById('hierarchyTitle').innerText = `Team: ${coachName}`; const res = await fetch(`${API}/management/get_team_attendance.php?coach_id=${coachId}`); const data = await res.json(); document.getElementById("hierarchyBody").innerHTML = data.map(log => `<tr><td>${log.first_name} ${log.last_name}</td><td>${log.latest_date||'-'}</td><td><span class="pill status-${(log.latest_status||'').replace(/\s/g,'')}">${log.latest_status||'Inactive'}</span></td><td><button class="btn btn-edit" onclick="openHistory(${log.employee_id}, '${log.first_name}')">👁️ logs</button></td></tr>`).join(''); }
         function resetToLeaders() { document.getElementById('backBtn').style.display = 'none'; document.getElementById('hierarchyTitle').innerText = "Management Hierarchy"; loadHierarchy(); }
 
         window.onload = function() {
             const d = new Date(), s = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0], e = d.toISOString().split('T')[0];
-            document.getElementById('master_start').value = s; document.getElementById('master_end').value = e;
             document.getElementById('hist_start').value = s; document.getElementById('hist_end').value = e;
-            loadFullData();
+            loadHierarchy(); // Set Hierarchy as default view
         };
     </script>
 </body>
