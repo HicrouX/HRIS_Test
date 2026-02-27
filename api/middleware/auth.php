@@ -1,8 +1,21 @@
 <?php
 // api/middleware/auth.php
 header("Content-Type: text/html; charset=UTF-8");
-// 🔴 FIX: Start Session ONLY if it's not already running
+
+// 🔴 FIX: Configure Session for Cross-Domain (Vercel + HelioHost)
 if (session_status() === PHP_SESSION_NONE) {
+    // Only set these if using HTTPS
+    $is_secure = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') || 
+                 (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+    
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'domain' => '', // Set your HelioHost domain here if needed
+        'secure' => $is_secure,
+        'httponly' => true,
+        'samesite' => 'None'
+    ]);
     session_start();
 }
 

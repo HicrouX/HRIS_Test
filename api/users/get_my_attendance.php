@@ -1,6 +1,5 @@
 <?php
 // api/users/get_my_attendance.php
-header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 require_once '../config/db.php';
 require_once '../middleware/auth.php';
