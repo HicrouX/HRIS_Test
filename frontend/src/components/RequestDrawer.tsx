@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { X, Calendar, Clock, FileText, Send } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { X, Clock, FileText, Send, AlertCircle } from 'lucide-react';
 import { useRequests } from '../hooks/useRequests';
 
 interface RequestDrawerProps {
