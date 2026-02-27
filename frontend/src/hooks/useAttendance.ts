@@ -17,7 +17,8 @@ export const useAttendance = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get('/api/users/get_my_attendance.php');
+        const baseUrl = import.meta.env.VITE_API_URL;
+        const response = await axios.get(`${baseUrl}/users/get_my_attendance.php`);
         setData(response.data);
       } catch (err) {
         setError('Failed to fetch attendance data');
