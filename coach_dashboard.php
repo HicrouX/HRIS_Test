@@ -10,7 +10,8 @@ require_once 'api/config/db.php';
 require_once 'api/middleware/auth.php';
 verifyAccess([2]); // Coach Access Only
 
-$api_base_url = "http://localhost/hris_official/api"; 
+"https://agriease.helioho.st/hris/api"
+
 $coach_id = $_SESSION['employee_id'];
 
 // FETCH COACH NAME
@@ -36,10 +37,9 @@ try {
         .user-name { font-weight: bold; font-size: 16px; color: #333; margin-bottom: 5px; text-transform: capitalize; }
         .user-id { font-size: 11px; color: #888; background: #f4f4f4; padding: 3px 10px; border-radius: 12px; display: inline-block; }
 
-        .nav-item { padding: 12px 20px; margin: 5px 0; border-radius: 8px; cursor: pointer; color: var(--text-gray); font-size: 14px; transition: 0.2s; }
+        .nav-item { padding: 12px 20px; margin: 5px 0; border-radius: 8px; cursor: pointer; color: var(--text-gray); font-size: 14px; transition: 0.2s; text-decoration: none; display: block; }
         .nav-active { background: #FFC107; color: #000 !important; font-weight: bold; }
         
-        /* SCROLLING FIX FOR MAIN CONTENT APPLIED HERE */
         .main-content { flex: 1; min-height: 0; background: #fff; margin: 15px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
         .view-content { display: none; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
         .active-view { display: flex; }
@@ -51,6 +51,7 @@ try {
         th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #f9f9f9; font-size: 12px; }
         th { cursor: pointer; background-color: #f8f9fa; font-weight: 600; color: #555; position: relative; }
         th:hover { background: #ebedef; }
+        th::after { content: ' ⬍'; font-size: 10px; color: #ccc; position: absolute; right: 5px; }
         
         .status-pill { padding: 4px 10px; border-radius: 12px; font-weight: 600; font-size: 10px; text-transform: uppercase; }
         .status-Pending { background: #fff3e0; color: #e67e22; }
@@ -60,28 +61,31 @@ try {
         .status-Present { background: #e8f5e9; color: #2e7d32; }
         .status-Late, .status-Tardy { background: #fff3e0; color: #e67e22; }
         .status-Absent { background: #ffebee; color: #c62828; }
+        .status-OnLeave { background: #e3f2fd; color: #1565c0; } 
         
         /* MODAL STYLES */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: white; padding: 0; border-radius: 4px; width: 1000px; max-height: 90vh; display: flex; flex-direction: column; }
         .modal-header { background: #fff; padding: 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;}
-        .modal-title { font-weight: bold; color: #333; }
-        .close-x { font-size: 24px; cursor: pointer; color: #999; }
-        
-        /* ✅ SCROLLING FIX FOR MODAL BODY APPLIED HERE */
+        .modal-title { font-weight: bold; color: #333; font-size: 16px; }
+        .close-btn, .close-x { font-size: 24px; cursor: pointer; color: #999; }
         .modal-body { flex: 1; overflow-y: auto; min-height: 0; }
         
         .history-table th { background: #eee; color: #333; font-weight: bold; font-size: 12px; border-bottom: 2px solid #ddd; padding: 10px; position: sticky; top: 0; z-index: 1; }
         .history-table td { background: #fff; color: #555; font-size: 12px; border-bottom: 1px solid #eee; padding: 10px; vertical-align: middle; }
         .clickable-name { color: #1e4d8c; font-weight: bold; cursor: pointer; text-decoration: underline; }
+        .action-icon { cursor: pointer; font-size: 16px; text-decoration: none; display: inline-block; transition: 0.2s; }
+        .action-icon:hover { transform: scale(1.2); }
         
         .form-card { background: #fafbfc; padding: 30px; border-radius: 8px; border-left: 5px solid var(--accent-blue); margin-bottom: 30px; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }
         input, select, textarea { padding: 8px; border: 1px solid #ddd; border-radius: 6px; width: 100%; box-sizing: border-box; font-size: 13px; }
         textarea { grid-column: span 2; }
-        .submit-btn { width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; background: var(--accent-blue); }
+        .submit-btn { width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; background: var(--accent-blue); margin-top: 10px;}
+        .readonly-field { background: #eee; color: #777; cursor: not-allowed; }
         
         .modal-box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 450px; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
         
         .search-box { padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; outline: none; margin-left: 10px; background: #fff; }
         .export-btn { background: #27ae60; border: none; padding: 6px 12px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold; font-size: 12px; margin-left: 10px; }
@@ -99,6 +103,14 @@ try {
         .filter-tag { background: #e3f2fd; color: #0d47a1; padding: 4px 8px; border-radius: 12px; font-size: 11px; display: flex; align-items: center; gap: 5px; border: 1px solid #90caf9; margin-top: 2px; }
         .filter-tag span { cursor: pointer; font-weight: bold; color: #c62828; margin-left: 2px; }
         .clear-all-tag { background: #ffcdd2; color: #b71c1c; padding: 4px 8px; border-radius: 12px; font-size: 11px; display: flex; align-items: center; gap: 5px; border: 1px solid #ef9a9a; margin-top: 2px; cursor: pointer; font-weight: bold; }
+
+        /* ✅ Summary Stat Badges */
+        .stats-container { display: flex; gap: 15px; padding: 15px 40px 0 40px; flex-wrap: wrap; }
+        .stat-badge { padding: 10px 15px; border-radius: 8px; font-weight: bold; font-size: 12px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; }
+        .badge-present { background: #e8f5e9; color: #2e7d32; border-color: #c8e6c9; }
+        .badge-absent { background: #ffebee; color: #c62828; border-color: #ffcdd2; }
+        .badge-late { background: #fff3e0; color: #e65100; border-color: #ffe0b2; }
+        .badge-leave { background: #e3f2fd; color: #1565c0; border-color: #bbdefb; }
     </style>
 </head>
 <body>
@@ -117,7 +129,7 @@ try {
         <div class="nav-item" onclick="switchView('my-requests-view', this)">My Requests</div>
         <div class="nav-item" onclick="switchView('my-attendance', this)">My Attendance Records</div>
         <div style="flex: 1;"></div>
-        <a href="logout.php" class="nav-item" style="color: #e74c3c;">Log Out</a>
+        <a href="logout.php" class="nav-item" style="color: #e74c3c; text-decoration:none;">Log Out</a>
     </div>
 
     <div class="main-content">
@@ -184,12 +196,54 @@ try {
             <div class="header" style="background: #3498db;"><h2>Filing Center</h2></div>
             <div class="container">
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:30px;">
-                    <div class="form-card"><h3>📝 Leave</h3><form id="leaveForm" class="form-grid"><select id="l_type"><option>Sick Leave</option><option>Vacation Leave</option></select><div></div><input type="date" id="l_start"><input type="date" id="l_end"><textarea id="l_reason" placeholder="Reason..."></textarea><button type="button" class="submit-btn" onclick="submitRequest('leave')">Submit</button></form></div>
-                    <div class="form-card" style="border-left: 5px solid #27ae60;"><h3>⏰ Overtime</h3><form id="otForm" class="form-grid"><select id="ot_type"><option>Regular Overtime</option><option>Duty on Rest Day</option></select><div></div><input type="datetime-local" id="ot_start"><input type="datetime-local" id="ot_end"><textarea id="ot_purpose" placeholder="Purpose..."></textarea><button type="button" class="submit-btn" style="background:#27ae60;" onclick="submitRequest('ot')">Submit</button></form></div>
+                    <div class="form-card">
+                        <h3>📝 Leave</h3>
+                        <form id="leaveForm" class="form-grid">
+                            <select id="l_type"><option>Sick Leave</option><option>Vacation Leave</option></select><div></div>
+                            <input type="date" id="l_start"><input type="date" id="l_end">
+                            <textarea id="l_reason" placeholder="Reason..."></textarea>
+                            
+                            <div style="background:#f4f6f8; padding:15px; border-radius:6px; font-size:11px; color:#555; border: 1px solid #eee; grid-column: span 2;">
+                                <label style="display:flex; gap:8px; margin-bottom:10px; cursor:pointer; align-items:flex-start;">
+                                    <input type="checkbox" id="l_agree1" style="width:auto; margin-top:2px;">
+                                    <span>I confirm that the information submitted has undergone a thorough double-check process, ensuring its accuracy and reliability. <b style="color:red;">*</b></span>
+                                </label>
+                                <label style="display:flex; gap:8px; cursor:pointer; align-items:flex-start;">
+                                    <input type="checkbox" id="l_agree2" style="width:auto; margin-top:2px;">
+                                    <span>I understand that falsifying information is a serious offense, constituting fraud, and I acknowledge that engaging in such behavior can lead to severe consequences. <b style="color:red;">*</b></span>
+                                </label>
+                            </div>
+
+                            <button type="button" class="submit-btn" style="grid-column: span 2;" onclick="submitRequest('leave')">Submit Leave</button>
+                        </form>
+                    </div>
+
+                    <div class="form-card" style="border-left: 5px solid #27ae60;">
+                        <h3>⏰ Overtime</h3>
+                        <form id="otForm" class="form-grid">
+                            <select id="ot_type"><option>Regular Overtime</option><option>Duty on Rest Day</option></select><div></div>
+                            <input type="datetime-local" id="ot_start"><input type="datetime-local" id="ot_end">
+                            <textarea id="ot_purpose" placeholder="Purpose..."></textarea>
+                            
+                            <div style="background:#f4f6f8; padding:15px; border-radius:6px; font-size:11px; color:#555; border: 1px solid #eee; grid-column: span 2;">
+                                <label style="display:flex; gap:8px; margin-bottom:10px; cursor:pointer; align-items:flex-start;">
+                                    <input type="checkbox" id="ot_agree1" style="width:auto; margin-top:2px;">
+                                    <span>I confirm that the information submitted has undergone a thorough double-check process, ensuring its accuracy and reliability. <b style="color:red;">*</b></span>
+                                </label>
+                                <label style="display:flex; gap:8px; cursor:pointer; align-items:flex-start;">
+                                    <input type="checkbox" id="ot_agree2" style="width:auto; margin-top:2px;">
+                                    <span>I understand that falsifying information is a serious offense, constituting fraud, and I acknowledge that engaging in such behavior can lead to severe consequences. <b style="color:red;">*</b></span>
+                                </label>
+                            </div>
+
+                            <button type="button" class="submit-btn" style="background:#27ae60; grid-column: span 2;" onclick="submitRequest('ot')">Submit Overtime</button>
+                        </form>
+                    </div>
                 </div>
+
                 <div class="form-card" style="border-left: 5px solid #e74c3c;">
                     <h3 style="color: #e74c3c;">Attendance Dispute</h3>
-                    <form id="disputeForm" class="form-grid">
+                    <form id="disputeForm" class="form-grid" style="grid-template-columns: 1fr 1fr;">
                         <input type="text" value="Self-Filing" class="readonly-field" readonly>
                         <select id="d_type" required onchange="toggleTimeInput(this.value)">
                             <option value="" disabled selected>Select Dispute Type</option>
@@ -200,15 +254,15 @@ try {
                             <option>Breaktime</option>
                             <option>Lunch Break</option>
                         </select>
-                        <div style="grid-column: span 2;"><label style="font-size:12px; font-weight:bold;">Date of Incident:</label><input type="date" id="d_date"></div>
+                        <div style="grid-column: span 2;"><label style="font-size:12px; font-weight:bold;">Date of Incident:</label><input type="date" id="d_date" required></div>
                         <div id="timeInputDiv" style="display:none; grid-column: span 2;">
                             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                                 <div><label style="font-weight:bold; color:red; font-size:11px;">Proposed In:</label><input type="time" id="d_time_in"></div>
                                 <div><label style="font-weight:bold; color:red; font-size:11px;">Proposed Out:</label><input type="time" id="d_time_out"></div>
                             </div>
                         </div>
-                        <textarea id="d_reason" placeholder="Explain discrepancy..." rows="3"></textarea>
-                        <button type="button" class="submit-btn" style="background:#e74c3c;" onclick="submitRequest('dispute')">Submit Dispute</button>
+                        <textarea id="d_reason" placeholder="Explain discrepancy..." rows="3" required style="grid-column: span 2;"></textarea>
+                        <button type="button" class="submit-btn" style="background:#e74c3c; grid-column: span 2;" onclick="submitRequest('dispute')">Submit Dispute</button>
                     </form>
                 </div>
             </div>
@@ -226,11 +280,42 @@ try {
         <div id="my-attendance" class="view-content">
             <div class="header">
                 <div style="display:flex; align-items:center; gap:10px;"><h2 style="margin:0;">Attendance History</h2></div>
-                <div style="display:flex;"><input type="date" id="range_start" class="search-box" style="width:130px;" onchange="loadMyAttendance()"><input type="date" id="range_end" class="search-box" style="width:130px; margin-left:5px;" onchange="loadMyAttendance()"></div>
+                
+                <div style="background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 15px; font-size: 13px; font-weight: bold; color: white;">
+                    Total Hours: <span id="totalHoursSum">0.00</span>
+                </div>
+                <div style="display:flex;">
+                    <input type="date" id="range_start" class="search-box" style="width:130px;" onchange="loadMyAttendance()">
+                    <input type="date" id="range_end" class="search-box" style="width:130px; margin-left:5px;" onchange="loadMyAttendance()">
+                </div>
             </div>
+            
+            <div class="stats-container">
+                <div class="stat-badge badge-present">Present: <span id="countPresent" style="font-size:16px;">0</span></div>
+                <div class="stat-badge badge-absent">Absent: <span id="countAbsent" style="font-size:16px;">0</span></div>
+                <div class="stat-badge badge-late">Late / Tardy: <span id="countLate" style="font-size:16px;">0</span></div>
+                <div class="stat-badge badge-leave">On Leave: <span id="countLeave" style="font-size:16px;">0</span></div>
+            </div>
+
             <div class="container">
-                <div style="margin-bottom:10px;"><select class="search-box" onchange="filterTable('myAttTable', this.value)" style="margin-left:0; width: 150px;"><option value="">Show All Statuses</option><option value="Present">Present</option><option value="Late">Late</option><option value="Tardy">Tardy</option><option value="Absent">Absent</option><option value="Overtime">Overtime</option><option value="On Leave">On Leave</option><option value="Undertime">Undertime</option><option value="Duty on Rest Day">Duty on Rest Day</option></select></div>
-                <table id="myAttTable"><thead><tr onclick="sortTable('myAttTable', 0)"><th>Date ⬍</th><th>In</th><th>Out</th><th>Break In</th><th>Break Out</th><th>Status ⬍</th><th>Hrs ⬍</th></tr></thead><tbody id="myAttendanceBody"></tbody></table>
+                <div style="margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <select class="search-box" onchange="filterTable('myAttTable', this.value)" style="margin-left:0; width: 150px;">
+                        <option value="">Show All Statuses</option>
+                        <option value="Present">Present</option>
+                        <option value="Late">Late</option>
+                        <option value="Tardy">Tardy</option>
+                        <option value="Absent">Absent</option>
+                        <option value="Overtime">Overtime</option>
+                        <option value="On Leave">On Leave</option>
+                        <option value="Undertime">Undertime</option>
+                        <option value="Duty on Rest Day">Duty on Rest Day</option>
+                    </select>
+                    <button class="export-btn" onclick="exportIndividualExcel(COACH_ID, 'my')">📂 Export My Logs</button>
+                </div>
+                <table id="myAttTable">
+                    <thead><tr onclick="sortTable('myAttTable', 0)"><th>Date ⬍</th><th>In</th><th>Out</th><th>Break In</th><th>Break Out</th><th>Status ⬍</th><th>Hrs ⬍</th></tr></thead>
+                    <tbody id="myAttendanceBody"></tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -261,13 +346,13 @@ try {
                     <option value="Duty on Rest Day">Duty on Rest Day</option>
                 </select>
                 <div style="display:flex; gap:10px; margin-bottom:10px;">
-                    <div>Proposed In: <input type="time" id="finalTimeIn"></div>
-                    <div>Proposed Out: <input type="time" id="finalTimeOut"></div>
+                    <div style="flex:1;">Proposed In: <input type="time" id="finalTimeIn" style="width:100%; padding:8px; box-sizing:border-box;"></div>
+                    <div style="flex:1;">Proposed Out: <input type="time" id="finalTimeOut" style="width:100%; padding:8px; box-sizing:border-box;"></div>
                 </div>
             </div>
 
             <label style="font-weight:bold;">Remarks:</label>
-            <textarea id="actionRemarks" rows="2" style="width:100%; margin-bottom:10px;"></textarea>
+            <textarea id="actionRemarks" rows="2" style="width:100%; padding:10px; box-sizing:border-box; margin-bottom:10px;"></textarea>
             <input type="hidden" id="currentDisputeId">
             
             <div style="display:flex; gap:10px; margin-top:15px;">
@@ -281,13 +366,18 @@ try {
         <div class="modal-content">
             <div class="modal-header">
                 <div class="modal-title" id="modalTitle">Employee History</div>
-                <span class="close-x" onclick="closeModal()">×</span>
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <button class="export-btn" onclick="exportIndividualExcel(document.getElementById('current_view_id').value, 'modal')">📂 Export</button>
+                    <span class="close-btn" onclick="closeModal()">×</span>
+                </div>
             </div>
             <div style="padding: 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: flex-end;">
-                <span style="font-size: 13px; color: #555; margin-right: 10px;">Filter Range:</span><input type="date" id="hist_modal_start" class="search-box"><input type="date" id="hist_modal_end" class="search-box" style="margin-left: 5px;">
+                <span style="font-size: 13px; color: #555; margin-right: 10px;">Filter Range:</span>
+                <input type="date" id="hist_modal_start" class="search-box" style="width: 140px;">
+                <input type="date" id="hist_modal_end" class="search-box" style="margin-left: 5px; width: 140px;">
                 
                 <div class="history-filter-container">
-                    <button onclick="toggleHistoryFilterMenu()" style="background:#2c3e50; color:white; border:none; padding:8px 15px; border-radius:5px; font-weight:bold; font-size:12px; cursor:pointer;">Filter Status ⇩</button>
+                    <button onclick="toggleHistoryFilterMenu()" style="background:#2c3e50; color:white; border:none; padding:8px 15px; border-radius:5px; font-weight:bold; font-size:12px; cursor:pointer; margin-left:10px;">Filter Status ⇩</button>
                     <div id="historyFilterMenu" class="history-filter-dropdown">
                         <label><input type="checkbox" class="hist-status-cb" value="Present" onchange="applyHistoryFilters()"> Present</label>
                         <label><input type="checkbox" class="hist-status-cb" value="Absent" onchange="applyHistoryFilters()"> Absent</label>
@@ -301,8 +391,7 @@ try {
                 </div>
                 
                 <div id="activeHistoryFilters" style="display:flex; gap:5px; align-items:center; flex-wrap:wrap; margin-left:10px;"></div>
-
-                <button class="export-btn" onclick="filterMemberHistory()" style="margin-left: 10px; padding: 6px 12px;">Go</button>
+                <button class="submit-btn" style="width: auto; padding: 6px 15px; margin:0 0 0 10px;" onclick="filterMemberHistory()">Go</button>
             </div>
             
             <div class="modal-body">
@@ -344,11 +433,43 @@ try {
 
         function toggleTimeInput(val) { document.getElementById('timeInputDiv').style.display = val.includes('Forgot') ? 'block' : 'none'; }
 
+        // ✅ NEW: CALCULATE HOURS & SUMMARY STATISTICS
+        function updateTableSummaries(tid) {
+            let sum = 0;
+            let counts = { present: 0, absent: 0, late: 0, leave: 0 };
+            
+            const rows = Array.from(document.getElementById(tid).tBodies[0].rows);
+            rows.forEach(r => {
+                if (r.style.display !== 'none' && r.cells.length > 1) { 
+                    // Read the last column for hours, second to last for status
+                    let val = parseFloat(r.cells[r.cells.length - 1].innerText);
+                    if (!isNaN(val)) sum += val;
+                    
+                    let status = r.cells[r.cells.length - 2].innerText.toLowerCase();
+                    if (status.includes('present')) counts.present++;
+                    else if (status.includes('absent')) counts.absent++;
+                    else if (status.includes('late') || status.includes('tard')) counts.late++;
+                    else if (status.includes('leave')) counts.leave++;
+                }
+            });
+            
+            if(document.getElementById('totalHoursSum')) document.getElementById('totalHoursSum').innerText = sum.toFixed(2);
+            if(document.getElementById('countPresent')) document.getElementById('countPresent').innerText = counts.present;
+            if(document.getElementById('countAbsent')) document.getElementById('countAbsent').innerText = counts.absent;
+            if(document.getElementById('countLate')) document.getElementById('countLate').innerText = counts.late;
+            if(document.getElementById('countLeave')) document.getElementById('countLeave').innerText = counts.leave;
+        }
+
         function sortTable(tid, n) {
             let table = document.getElementById(tid), tbody = table.tBodies[0], rows = Array.from(tbody.rows);
             let asc = table.getAttribute('data-asc') === 'true';
             rows.sort((a,b) => {
                 let v1 = a.cells[n].innerText.toLowerCase(), v2 = b.cells[n].innerText.toLowerCase();
+                let num1 = parseFloat(v1.replace(/[^0-9.-]+/g,"")), num2 = parseFloat(v2.replace(/[^0-9.-]+/g,""));
+                let date1 = Date.parse(v1), date2 = Date.parse(v2);
+
+                if (!isNaN(date1) && !isNaN(date2) && v1.includes('-')) return asc ? date1 - date2 : date2 - date1;
+                if (!isNaN(num1) && !isNaN(num2)) return asc ? num1 - num2 : num2 - num1;
                 return asc ? v1.localeCompare(v2) : v2.localeCompare(v1);
             });
             rows.forEach(r => tbody.appendChild(r));
@@ -375,12 +496,27 @@ try {
             Array.from(rows).forEach(r => {
                 r.style.display = r.innerText.toLowerCase().includes(filter) ? '' : 'none';
             });
+            if (tid === 'myAttTable') updateTableSummaries(tid);
+        }
+
+        // --- EXPORT FUNCTION ---
+        function exportIndividualExcel(targetId, context = 'my') { 
+            if(!targetId) return;
+            let s = '', e = '';
+            if(context === 'modal') {
+                s = document.getElementById('hist_modal_start') ? document.getElementById('hist_modal_start').value : '';
+                e = document.getElementById('hist_modal_end') ? document.getElementById('hist_modal_end').value : '';
+            } else {
+                s = document.getElementById('range_start') ? document.getElementById('range_start').value : '';
+                e = document.getElementById('range_end') ? document.getElementById('range_end').value : '';
+            }
+            window.location.href = `${API}/export/export_excel.php?mode=INDIVIDUAL&employee_id=${targetId}&start_date=${s}&end_date=${e}`; 
         }
 
         async function loadAttendance() {
             const res = await fetch(`${API}/management/get_team_attendance.php?coach_id=${COACH_ID}`);
             const data = await res.json();
-            document.getElementById('attendanceLogs').innerHTML = data.map(log => `
+            document.getElementById('attendanceLogs').innerHTML = data.length ? data.map(log => `
                 <tr>
                     <td style="padding:15px;"><span class="clickable-name" onclick="viewMemberHistory(${log.employee_id}, '${log.first_name} ${log.last_name}')">${log.first_name} ${log.last_name}</span></td>
                     <td>${log.latest_date||'-'}</td>
@@ -388,32 +524,33 @@ try {
                     <td>${log.time_out||'-'}</td>
                     <td><span class="status-pill status-${(log.latest_status||'').replace(/\s/g,'')}">${log.latest_status||'-'}</span></td>
                     <td><span class="action-icon" style="color:#3498db;" onclick="viewMemberHistory(${log.employee_id}, '${log.first_name}')">👁️</span></td>
-                </tr>`).join('');
+                </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;">No records found.</td></tr>';
         }
 
         async function loadMyRequests() {
             const res = await fetch(`${API}/users/get_my_request_history.php?employee_id=${COACH_ID}`);
             const data = await res.json();
+            if(data.error) return;
+            
             const leaves = data.filter(item => item.type === 'Leave');
             const overtime = data.filter(item => item.type === 'Overtime');
             const disputes = data.filter(item => item.type === 'Dispute');
             const getApprover = (item) => item.admin_first ? `<span style="color:#27ae60; font-weight:600;">${item.admin_first} ${item.admin_last}</span>` : '<span style="color:#ccc;">-</span>';
             
-            document.getElementById("myLeaveLogs").innerHTML = leaves.length ? leaves.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}<br>${i.end_date}</td><td>${i.reason}</td><td><span class="status-pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td><td>${getApprover(i)}</td></tr>`).join('') : '<tr><td colspan="6">No records</td></tr>';
-            document.getElementById("myOTLogs").innerHTML = overtime.length ? overtime.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}<br>${i.end_date}</td><td>${i.reason}</td><td><span class="status-pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td><td>${getApprover(i)}</td></tr>`).join('') : '<tr><td colspan="6">No records</td></tr>';
-            
-            document.getElementById("myDisputeLogs").innerHTML = disputes.length ? disputes.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}</td><td>${i.reason}</td><td><span class="status-pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td><td style="color:blue; font-style:italic;">${i.remarks || '--'}</td></tr>`).join('') : '<tr><td colspan="6">No records</td></tr>';
+            document.getElementById("myLeaveLogs").innerHTML = leaves.length ? leaves.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}<br>${i.end_date}</td><td>${i.reason}</td><td><span class="status-pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td><td>${getApprover(i)}</td></tr>`).join('') : '<tr><td colspan="6" style="text-align:center;">No records</td></tr>';
+            document.getElementById("myOTLogs").innerHTML = overtime.length ? overtime.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}<br>${i.end_date}</td><td>${i.reason}</td><td><span class="status-pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td><td>${getApprover(i)}</td></tr>`).join('') : '<tr><td colspan="6" style="text-align:center;">No records</td></tr>';
+            document.getElementById("myDisputeLogs").innerHTML = disputes.length ? disputes.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}</td><td>${i.reason}</td><td><span class="status-pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td><td style="color:blue; font-style:italic;">${i.remarks || '--'}</td></tr>`).join('') : '<tr><td colspan="6" style="text-align:center;">No records</td></tr>';
         }
 
         function loadAllEndorsements() { loadLeaves(); loadOT(); loadDisputes(); }
 
-        async function loadLeaves() { const res = await fetch(`${API}/management/get_pending_leaves.php?user_id=${COACH_ID}`); const data = await res.json(); document.getElementById('coachLeaveList').innerHTML = data.map(item => `<tr><td><strong>${item.first_name} ${item.last_name}</strong></td><td>"${item.reason}"</td><td><span style="cursor:pointer; color:green;" onclick="endorse(${item.leave_id}, 'leave', 'ENDORSE')">✔</span> <span style="cursor:pointer; color:red; margin-left:10px;" onclick="endorse(${item.leave_id}, 'leave', 'DENY')">❌</span></td></tr>`).join(''); }
-        async function loadOT() { const res = await fetch(`${API}/management/get_pending_ot.php?user_id=${COACH_ID}`); const data = await res.json(); document.getElementById('coachOTList').innerHTML = data.map(item => `<tr><td><strong>${item.first_name} ${item.last_name}</strong></td><td>"${item.purpose}"</td><td><span style="cursor:pointer; color:green;" onclick="endorse(${item.ot_id}, 'ot', 'ENDORSE')">✔</span> <span style="cursor:pointer; color:red; margin-left:10px;" onclick="endorse(${item.ot_id}, 'ot', 'DENY')">❌</span></td></tr>`).join(''); }
+        async function loadLeaves() { const res = await fetch(`${API}/management/get_pending_leaves.php?user_id=${COACH_ID}`); const data = await res.json(); document.getElementById('coachLeaveList').innerHTML = data.length ? data.map(item => `<tr><td><strong>${item.first_name} ${item.last_name}</strong></td><td>"${item.reason}"</td><td><span class="action-icon" style="color:green;" onclick="endorse(${item.leave_id}, 'leave', 'ENDORSE')">✔</span> <span class="action-icon" style="color:red;" onclick="endorse(${item.leave_id}, 'leave', 'DENY')">❌</span></td></tr>`).join('') : '<tr><td colspan="3" style="text-align:center;">No pending leaves.</td></tr>'; }
+        async function loadOT() { const res = await fetch(`${API}/management/get_pending_ot.php?user_id=${COACH_ID}`); const data = await res.json(); document.getElementById('coachOTList').innerHTML = data.length ? data.map(item => `<tr><td><strong>${item.first_name} ${item.last_name}</strong></td><td>"${item.purpose}"</td><td><span class="action-icon" style="color:green;" onclick="endorse(${item.ot_id}, 'ot', 'ENDORSE')">✔</span> <span class="action-icon" style="color:red;" onclick="endorse(${item.ot_id}, 'ot', 'DENY')">❌</span></td></tr>`).join('') : '<tr><td colspan="3" style="text-align:center;">No pending overtime.</td></tr>'; }
         
         async function loadDisputes() { 
             const res = await fetch(`${API}/management/get_pending_disputes.php?coach_id=${COACH_ID}`); 
             const data = await res.json(); 
-            document.getElementById('coachDisputeList').innerHTML = data.map(item => `
+            document.getElementById('coachDisputeList').innerHTML = data.length ? data.map(item => `
                 <tr>
                     <td><strong>${item.first_name} ${item.last_name}</strong></td>
                     <td style="font-size:10px; color:#555;">${item.role_name || 'Employee'}</td>
@@ -423,7 +560,7 @@ try {
                     <td>
                         <button onclick="openDisputeModal(${item.dispute_id}, '${item.first_name}', '${item.dispute_date}')" style="background:#27ae60; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Review & Settle</button> 
                     </td>
-                </tr>`).join(''); 
+                </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;">No pending disputes.</td></tr>'; 
         }
 
         function openDisputeModal(id, name, date) { 
@@ -438,7 +575,6 @@ try {
         
         function toggleDisputeFields() {
             const action = document.getElementById('disputeAction').value;
-            // Hide the status and time inputs if Denying
             document.getElementById('approvalFields').style.display = (action === 'APPROVE') ? 'block' : 'none';
         }
 
@@ -449,41 +585,69 @@ try {
             
             let payload = { dispute_id: id, action: action, remarks: rem };
 
-            // Only attach new status/time if Approving
             if (action === 'APPROVE') {
                 payload.new_status = document.getElementById('newDisputeStatus').value;
                 payload.time_in = document.getElementById('finalTimeIn').value;
                 payload.time_out = document.getElementById('finalTimeOut').value;
             }
             
-            await fetch(`${API}/management/resolve_dispute.php`, { 
-                method: 'POST', 
-                body: JSON.stringify(payload) 
-            }); 
+            await fetch(`${API}/management/resolve_dispute.php`, { method: 'POST', body: JSON.stringify(payload) }); 
             closeDisputeModal(); 
             loadDisputes(); 
         }
         
         async function endorse(id, type, act) { if(!confirm(act + "?")) return; let endpoint = type === 'leave' ? '/management/endorse_leave.php' : '/management/endorse_overtime.php'; await fetch(`${API}${endpoint}`, { method: 'POST', body: JSON.stringify({ [type === 'leave' ? 'leave_id' : 'ot_id']: id, coach_id: COACH_ID, action: act }) }); if (type === 'leave') loadLeaves(); if (type === 'ot') loadOT(); }
         
+        // ✅ SUBMIT WITH CHECKBOXES
         async function submitRequest(type) { 
-            let form = {}; 
-            if (type === 'leave') form = { employee_id: COACH_ID, leave_type: document.getElementById('l_type').value, start_date: document.getElementById('l_start').value, end_date: document.getElementById('l_end').value, reason: document.getElementById('l_reason').value, agreement_1:1, agreement_2:1 }; 
-            else if (type === 'ot') { const s = new Date(document.getElementById('ot_start').value), e = new Date(document.getElementById('ot_end').value); if ((e - s) / 36e5 > 2) { alert("Max 2 hrs"); return; } form = { employee_id: COACH_ID, ot_type: document.getElementById('ot_type').value, start_time: document.getElementById('ot_start').value, end_time: document.getElementById('ot_end').value, purpose: document.getElementById('ot_purpose').value, agreement_1:1, agreement_2:1 }; } 
-            else if (type === 'dispute') { 
+            let endpoint, payload, formId; 
+            
+            if (type === 'leave') { 
+                const agree1 = document.getElementById('l_agree1').checked ? 1 : 0;
+                const agree2 = document.getElementById('l_agree2').checked ? 1 : 0;
+                if (!agree1 || !agree2) { alert("⚠️ You must check both agreement boxes before submitting."); return; }
+
+                endpoint = '/users/file_leave.php'; formId = 'leaveForm'; 
+                payload = { employee_id: COACH_ID, leave_type: document.getElementById('l_type').value, start_date: document.getElementById('l_start').value, end_date: document.getElementById('l_end').value, reason: document.getElementById('l_reason').value, agreement_1: agree1, agreement_2: agree2 }; 
+            
+            } else if (type === 'ot') { 
+                const agree1 = document.getElementById('ot_agree1').checked ? 1 : 0;
+                const agree2 = document.getElementById('ot_agree2').checked ? 1 : 0;
+                if (!agree1 || !agree2) { alert("⚠️ You must check both agreement boxes before submitting."); return; }
+
+                const s = new Date(document.getElementById('ot_start').value), e = new Date(document.getElementById('ot_end').value); 
+                if ((e - s) / 36e5 > 2) { alert("Max 2 hrs"); return; } 
+
+                endpoint = '/users/file_overtime.php'; formId = 'otForm';
+                payload = { employee_id: COACH_ID, ot_type: document.getElementById('ot_type').value, start_time: document.getElementById('ot_start').value, end_time: document.getElementById('ot_end').value, purpose: document.getElementById('ot_purpose').value, agreement_1: agree1, agreement_2: agree2 }; 
+            
+            } else if (type === 'dispute') { 
+                endpoint = '/users/file_dispute.php'; formId = 'disputeForm';
                 let r = document.getElementById('d_reason').value; 
                 if(document.getElementById('d_type').value.includes('Forgot')) {
                     r += " [Proposed In: "+document.getElementById('d_time_in').value+", Proposed Out: "+document.getElementById('d_time_out').value+"]"; 
                 }
-                form = { employee_id: COACH_ID, date: document.getElementById('d_date').value, dispute_type: document.getElementById('d_type').value, reason: r }; 
+                payload = { employee_id: COACH_ID, date: document.getElementById('d_date').value, dispute_type: document.getElementById('d_type').value, reason: r }; 
             } 
-            const endpoint = type === 'dispute' ? '/users/file_dispute.php' : `/users/file_${type}.php`; 
-            const res = await fetch(`${API}${endpoint}`, { method:'POST', body:JSON.stringify(form) }); 
-            const r = await res.json(); alert(r.success||r.error); 
-            if(r.success) { if(type==='leave') document.getElementById('leaveForm').reset(); if(type==='ot') document.getElementById('otForm').reset(); if(type==='dispute') document.getElementById('disputeForm').reset(); loadMyRequests(); } 
+            
+            try {
+                const res = await fetch(`${API}${endpoint}`, { method:'POST', body:JSON.stringify(payload) }); 
+                const r = await res.json(); alert(r.success||r.error); 
+                if(r.success) { document.getElementById(formId).reset(); loadMyRequests(); } 
+            } catch (err) { alert("Submission failed."); }
         }
         
-        async function loadMyAttendance() { const r = await fetch(`${API}/users/get_my_attendance.php?employee_id=${COACH_ID}&start_date=${document.getElementById('range_start').value}&end_date=${document.getElementById('range_end').value}`); const d = await r.json(); document.getElementById('myAttendanceBody').innerHTML = d.map(x => `<tr><td>${x.date}</td><td>${x.time_in||'--'}</td><td>${x.time_out||'--'}</td><td>${x.break_in}</td><td>${x.break_out}</td><td><span class="status-pill status-${x.status.replace(/\s/g,'')}">${x.status}</span></td><td>${x.total_hours||0}</td></tr>`).join(''); }
+        async function loadMyAttendance() { 
+            const startInput = document.getElementById('range_start').value;
+            const endInput = document.getElementById('range_end').value;
+            
+            const r = await fetch(`${API}/users/get_my_attendance.php?employee_id=${COACH_ID}&start_date=${startInput}&end_date=${endInput}`); 
+            const d = await r.json(); 
+            
+            document.getElementById('myAttendanceBody').innerHTML = d.length ? d.map(x => `<tr><td>${x.date}</td><td>${x.time_in||'--:--'}</td><td>${x.time_out||'--:--'}</td><td>${x.break_in||'--:--'}</td><td>${x.break_out||'--:--'}</td><td><span class="status-pill status-${(x.status||'').replace(/\s/g,'')}">${x.status}</span></td><td>${x.total_hours||'0.00'}</td></tr>`).join('') : '<tr><td colspan="7" style="text-align:center;">No records</td></tr>'; 
+            
+            updateTableSummaries('myAttTable');
+        }
 
         // --- HISTORY FILTER LOGIC ---
         async function viewMemberHistory(empId, name) {
@@ -499,6 +663,7 @@ try {
         }
 
         function toggleHistoryFilterMenu() { const menu = document.getElementById('historyFilterMenu'); menu.style.display = menu.style.display === 'block' ? 'none' : 'block'; }
+        
         function applyHistoryFilters() {
             const checkedBoxes = document.querySelectorAll('.hist-status-cb:checked');
             const selectedStatuses = Array.from(checkedBoxes).map(cb => cb.value.trim());
@@ -529,7 +694,7 @@ try {
 
             document.getElementById('modalHistoryBody').innerHTML = filteredData.length ? filteredData.map(row => {
                 total += parseFloat(row.total_hours || 0);
-                return `<tr><td>${row.date}</td><td><span class="status-pill status-${row.status}">${row.status}</span></td><td>${row.time_in}</td><td>${row.time_out}</td><td>${row.break_in}</td><td>${row.break_out}</td><td>${row.lunch_break}</td><td>${row.total_hours}</td></tr>`;
+                return `<tr><td>${row.date}</td><td><span class="status-pill status-${(row.status||'').replace(/\s/g,'')}">${row.status}</span></td><td>${row.time_in||'--:--'}</td><td>${row.time_out||'--:--'}</td><td>${row.break_in||'--:--'}</td><td>${row.break_out||'--:--'}</td><td>${row.lunch_break||'0'}</td><td>${row.total_hours||'0.00'}</td></tr>`;
             }).join('') : '<tr><td colspan="8" style="text-align:center">No records</td></tr>';
             document.getElementById('totalHoursDisplay').innerText = total.toFixed(2);
         }
@@ -544,6 +709,7 @@ try {
             const d = new Date(), s = new Date(d.getFullYear(), 0, 1).toISOString().split('T')[0], e = d.toISOString().split('T')[0];
             document.getElementById('range_start').value=s; document.getElementById('range_end').value=e; 
             loadAttendance();
+            loadMyAttendance();
         };
     </script>
 </body>

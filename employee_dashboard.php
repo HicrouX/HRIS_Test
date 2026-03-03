@@ -16,7 +16,8 @@ if ($_SESSION['role_id'] >= 3) { header("Location: admin_dashboard.php"); exit; 
 
 verifyAccess([1]); 
 
-$api_base_url = "http://localhost/hris_official/api"; 
+$api_base_url = "https://agriease.helioho.st/hris/api"; 
+
 $emp_id = $_SESSION['employee_id'];
 
 // FETCH REAL NAME
@@ -51,7 +52,7 @@ try {
         .nav-item:hover { background: #f0f4f8; color: var(--primary-blue); }
         .nav-active { background: var(--accent-blue); color: #fff !important; box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3); }
         
-        /* Main Content - SCROLLING FIX APPLIED HERE */
+        /* Main Content */
         .main-content { flex: 1; min-height: 0; background: #fff; margin: 15px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
         .content-view { display: none; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
         .view-active { display: flex; }
@@ -60,6 +61,14 @@ try {
         .date-range-container { display: flex; align-items: center; gap: 10px; font-size: 13px; background: rgba(255,255,255,0.1); padding: 5px 15px; border-radius: 8px; }
         .date-input-small { background: transparent; border: none; color: white; font-size: 13px; cursor: pointer; outline: none; }
         
+        /* Summary Stat Badges */
+        .stats-container { display: flex; gap: 15px; padding: 15px 40px 0 40px; flex-wrap: wrap; }
+        .stat-badge { padding: 10px 15px; border-radius: 8px; font-weight: bold; font-size: 12px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; }
+        .badge-present { background: #e8f5e9; color: #2e7d32; border-color: #c8e6c9; }
+        .badge-absent { background: #ffebee; color: #c62828; border-color: #ffcdd2; }
+        .badge-late { background: #fff3e0; color: #e65100; border-color: #ffe0b2; }
+        .badge-leave { background: #e3f2fd; color: #1565c0; border-color: #bbdefb; }
+
         /* Compact Table */
         .table-wrapper { overflow-x: auto; padding: 20px 40px; }
         table { width: 100%; border-collapse: collapse; min-width: 700px; margin-top:10px; }
@@ -74,7 +83,10 @@ try {
         .status-Approved { background: #e8f5e9; color: #2e7d32; }
         .status-Denied { background: #ffebee; color: #c62828; }
         .status-Endorsed { background: #e3f2fd; color: #1565c0; }
-        .status-Tardy { background: #fff3e0; color: #e67e22; } 
+        .status-Present { background: #e8f5e9; color: #2e7d32; }
+        .status-Absent { background: #ffebee; color: #c62828; }
+        .status-Late, .status-Tardy { background: #fff3e0; color: #e67e22; } 
+        .status-OnLeave { background: #e3f2fd; color: #1565c0; } 
         
         .export-btn { background: #27ae60; border: none; padding: 8px 15px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 5px; margin-left: 10px; text-decoration: none; }
         
@@ -82,7 +94,7 @@ try {
         .form-container { padding: 40px; max-width: 900px; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
         .form-card { background: #fafbfc; padding: 30px; border-radius: 8px; border-left: 5px solid var(--accent-blue); }
         .form-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 15px; }
-        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; box-sizing: border-box; }
+        input[type="date"], input[type="datetime-local"], input[type="text"], select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; box-sizing: border-box; }
         .submit-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; background: var(--accent-blue); transition: 0.3s; margin-top: 10px; }
         .readonly-field { background: #eee; color: #777; cursor: not-allowed; }
         
@@ -126,6 +138,13 @@ try {
                 </div>
             </div>
             
+            <div class="stats-container">
+                <div class="stat-badge badge-present">Present: <span id="countPresent" style="font-size:16px;">0</span></div>
+                <div class="stat-badge badge-absent">Absent: <span id="countAbsent" style="font-size:16px;">0</span></div>
+                <div class="stat-badge badge-late">Late / Tardy: <span id="countLate" style="font-size:16px;">0</span></div>
+                <div class="stat-badge badge-leave">On Leave: <span id="countLeave" style="font-size:16px;">0</span></div>
+            </div>
+
             <div class="table-wrapper">
                 <div style="margin-bottom:10px;">
                     <select class="search-box" onchange="filterTable('attTable', this.value)" style="margin-left:0; width: 150px;">
@@ -176,12 +195,25 @@ try {
         <div id="request-view" class="content-view">
             <div class="view-header" style="background: var(--accent-blue);"><h2 style="margin:0; font-weight: 500;">Filing Center</h2></div>
             <div class="form-container">
+                
                 <div class="form-card">
                     <h3 style="margin-top:0; color: var(--primary-blue);">File Leave</h3>
                     <form id="leaveForm" class="form-grid">
                         <select id="l_type" class="form-input"><option value="Sick Leave">Sick Leave</option><option value="Vacation Leave">Vacation Leave</option></select>
                         <input type="date" id="l_start" required><input type="date" id="l_end" required>
                         <textarea id="l_reason" placeholder="Reason..." rows="3" required></textarea>
+                        
+                        <div style="background:#f4f6f8; padding:15px; border-radius:6px; font-size:11px; color:#555; border: 1px solid #eee;">
+                            <label style="display:flex; gap:8px; margin-bottom:10px; cursor:pointer; align-items:flex-start;">
+                                <input type="checkbox" id="l_agree1" style="width:auto; margin-top:2px;">
+                                <span>I confirm that the information submitted has undergone a thorough double-check process, ensuring its accuracy and reliability, especially the email addresses, to the best of my knowledge and abilities. <b style="color:red;">*</b></span>
+                            </label>
+                            <label style="display:flex; gap:8px; cursor:pointer; align-items:flex-start;">
+                                <input type="checkbox" id="l_agree2" style="width:auto; margin-top:2px;">
+                                <span>I understand that falsifying information is a serious offense, constituting fraud, and I acknowledge that engaging in such behavior can lead to severe consequences, including termination of employment. <b style="color:red;">*</b></span>
+                            </label>
+                        </div>
+
                         <button type="button" class="submit-btn" onclick="submitRequest('leave')">Submit Leave</button>
                     </form>
                 </div>
@@ -192,6 +224,18 @@ try {
                         <select id="ot_type" class="form-input"><option value="Regular Overtime">Regular Overtime</option><option value="Duty on Rest Day">Duty on Rest Day</option></select>
                         <input type="datetime-local" id="ot_start" required><input type="datetime-local" id="ot_end" required>
                         <textarea id="ot_purpose" placeholder="Purpose..." rows="2" required></textarea>
+                        
+                        <div style="background:#f4f6f8; padding:15px; border-radius:6px; font-size:11px; color:#555; border: 1px solid #eee;">
+                            <label style="display:flex; gap:8px; margin-bottom:10px; cursor:pointer; align-items:flex-start;">
+                                <input type="checkbox" id="ot_agree1" style="width:auto; margin-top:2px;">
+                                <span>I confirm that the information submitted has undergone a thorough double-check process, ensuring its accuracy and reliability, especially the email addresses, to the best of my knowledge and abilities. <b style="color:red;">*</b></span>
+                            </label>
+                            <label style="display:flex; gap:8px; cursor:pointer; align-items:flex-start;">
+                                <input type="checkbox" id="ot_agree2" style="width:auto; margin-top:2px;">
+                                <span>I understand that falsifying information is a serious offense, constituting fraud, and I acknowledge that engaging in such behavior can lead to severe consequences, including termination of employment. <b style="color:red;">*</b></span>
+                            </label>
+                        </div>
+
                         <button type="button" class="submit-btn" style="background:#27ae60;" onclick="submitRequest('ot')">Submit OT</button>
                     </form>
                 </div>
@@ -240,16 +284,33 @@ try {
 
         function toggleTimeInput(val) { document.getElementById('timeInputDiv').style.display = val.includes('Forgot') ? 'block' : 'none'; }
 
-        function updateHoursSum(tid) {
+        // ✅ NEW: CALCULATE HOURS & SUMMARY STATISTICS
+        function updateTableSummaries(tid) {
             let sum = 0;
+            let counts = { present: 0, absent: 0, late: 0, leave: 0 };
+            
             const rows = Array.from(document.getElementById(tid).tBodies[0].rows);
             rows.forEach(r => {
-                if (r.style.display !== 'none') {
+                if (r.style.display !== 'none' && r.cells.length > 1) { // Skip empty state rows
+                    // Add to total hours
                     let val = parseFloat(r.cells[7].innerText);
                     if (!isNaN(val)) sum += val;
+                    
+                    // Increment Summary Counters based on Status Column
+                    let status = r.cells[6].innerText.toLowerCase();
+                    if (status.includes('present')) counts.present++;
+                    else if (status.includes('absent')) counts.absent++;
+                    else if (status.includes('late') || status.includes('tard')) counts.late++;
+                    else if (status.includes('leave')) counts.leave++;
                 }
             });
+            
+            // Update UI
             document.getElementById('totalHoursSum').innerText = sum.toFixed(2);
+            document.getElementById('countPresent').innerText = counts.present;
+            document.getElementById('countAbsent').innerText = counts.absent;
+            document.getElementById('countLate').innerText = counts.late;
+            document.getElementById('countLeave').innerText = counts.leave;
         }
 
         function filterTable(tid, val) {
@@ -258,7 +319,7 @@ try {
             Array.from(rows).forEach(r => {
                 r.style.display = r.innerText.toLowerCase().includes(filter) ? '' : 'none';
             });
-            updateHoursSum(tid);
+            updateTableSummaries(tid); // Trigger stat recalculation on filter
         }
 
         function sortTable(tid, n) {
@@ -278,8 +339,8 @@ try {
             try {
                 const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${EMP_ID}&start_date=${start}&end_date=${end}`);
                 const data = await res.json();
-                document.getElementById("attendanceLogs").innerHTML = data.map(row => `<tr><td>${row.date}</td><td>${row.time_in}</td><td>${row.time_out}</td><td>${row.break_in}</td><td>${row.break_out}</td><td>${row.lunch_break}</td><td><span class="status-pill status-${row.status.replace(/\s/g,'')}">${row.status}</span></td><td>${row.total_hours}</td></tr>`).join('');
-                updateHoursSum('attTable');
+                document.getElementById("attendanceLogs").innerHTML = data.length ? data.map(row => `<tr><td>${row.date}</td><td>${row.time_in||'--:--'}</td><td>${row.time_out||'--:--'}</td><td>${row.break_in||'--:--'}</td><td>${row.break_out||'--:--'}</td><td>${row.lunch_break||'0'}</td><td><span class="status-pill status-${(row.status||'').replace(/\s/g,'')}">${row.status}</span></td><td>${row.total_hours||'0'}</td></tr>`).join('') : '<tr><td colspan="8" style="text-align:center">No records found.</td></tr>';
+                updateTableSummaries('attTable'); // Calculate stats after loading data
             } catch (err) {
                 console.error("Attendance Error:", err);
             }
@@ -334,17 +395,43 @@ try {
 
         async function submitRequest(type) {
             let endpoint, payload, formId;
+            
             if (type === 'leave') {
+                const agree1 = document.getElementById('l_agree1').checked ? 1 : 0;
+                const agree2 = document.getElementById('l_agree2').checked ? 1 : 0;
+                if (!agree1 || !agree2) { alert("⚠️ You must check both agreement boxes before submitting."); return; }
+
                 endpoint = '/users/file_leave.php'; formId = 'leaveForm';
-                payload = { employee_id: EMP_ID, leave_type: document.getElementById('l_type').value, start_date: document.getElementById('l_start').value, end_date: document.getElementById('l_end').value, reason: document.getElementById('l_reason').value, agreement_1: 1, agreement_2: 1 };
+                payload = { 
+                    employee_id: EMP_ID, 
+                    leave_type: document.getElementById('l_type').value, 
+                    start_date: document.getElementById('l_start').value, 
+                    end_date: document.getElementById('l_end').value, 
+                    reason: document.getElementById('l_reason').value, 
+                    agreement_1: agree1, 
+                    agreement_2: agree2 
+                };
             } else if (type === 'ot') {
+                const agree1 = document.getElementById('ot_agree1').checked ? 1 : 0;
+                const agree2 = document.getElementById('ot_agree2').checked ? 1 : 0;
+                if (!agree1 || !agree2) { alert("⚠️ You must check both agreement boxes before submitting."); return; }
+
                 const start = new Date(document.getElementById('ot_start').value);
                 const end = new Date(document.getElementById('ot_end').value);
                 const diffMs = end - start;
                 const diffHrs = diffMs / (1000 * 60 * 60);
                 if (diffHrs > 2) { alert("⚠️ Cannot submit: Overtime is limited to 2 hours per request."); return; }
+                
                 endpoint = '/users/file_overtime.php'; formId = 'otForm';
-                payload = { employee_id: EMP_ID, ot_type: document.getElementById('ot_type').value, start_time: document.getElementById('ot_start').value, end_time: document.getElementById('ot_end').value, purpose: document.getElementById('ot_purpose').value, agreement_1: 1, agreement_2: 1 };
+                payload = { 
+                    employee_id: EMP_ID, 
+                    ot_type: document.getElementById('ot_type').value, 
+                    start_time: document.getElementById('ot_start').value, 
+                    end_time: document.getElementById('ot_end').value, 
+                    purpose: document.getElementById('ot_purpose').value, 
+                    agreement_1: agree1, 
+                    agreement_2: agree2 
+                };
             } else if (type === 'dispute') {
                 endpoint = '/users/file_dispute.php'; formId = 'disputeForm';
                 let reason = document.getElementById('d_reason').value;

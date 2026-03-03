@@ -15,8 +15,9 @@ if (!isset($_SESSION['role_id']) || ($_SESSION['role_id'] != 3 && $_SESSION['rol
     header("Location: login.php"); exit;
 }
 
+$api_base_url = "https://agriease.helioho.st/hris/api"; 
+
 $user_id = $_SESSION['employee_id'];
-$api_base_url = "http://localhost/hris_official/api"; 
 
 // FETCH REAL NAME
 $admin_name = "Administrator";
@@ -108,6 +109,14 @@ if (isset($_GET['edit_id'])) {
         .modal-box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 450px; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
         select.search-box { background: #fff; cursor: pointer; }
+
+        /* ✅ Summary Stat Badges */
+        .stats-container { display: flex; gap: 15px; padding: 15px 40px 0 40px; flex-wrap: wrap; }
+        .stat-badge { padding: 10px 15px; border-radius: 8px; font-weight: bold; font-size: 12px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; }
+        .badge-present { background: #e8f5e9; color: #2e7d32; border-color: #c8e6c9; }
+        .badge-absent { background: #ffebee; color: #c62828; border-color: #ffcdd2; }
+        .badge-late { background: #fff3e0; color: #e65100; border-color: #ffe0b2; }
+        .badge-leave { background: #e3f2fd; color: #1565c0; border-color: #bbdefb; }
     </style>
 </head>
 <body>
@@ -208,8 +217,52 @@ if (isset($_GET['edit_id'])) {
         <div id="admin-filing" class="view-content">
             <div class="header" style="background: #3498db;"><h2>Filing Center</h2></div>
             <div class="container">
-                <div class="form-card"><h3>📝 Leave</h3><form id="leaveForm" class="form-grid"><select id="l_type"><option>Sick Leave</option><option>Vacation Leave</option></select><div></div><input type="date" id="l_start"><input type="date" id="l_end"><textarea id="l_reason" placeholder="Reason..."></textarea><button type="button" class="submit-btn" onclick="submitRequest('leave')">Submit</button></form></div>
-                <div class="form-card" style="border-left: 5px solid #27ae60;"><h3>⏰ Overtime</h3><form id="otForm" class="form-grid"><select id="ot_type"><option>Regular Overtime</option><option>Duty on Rest Day</option></select><div></div><input type="datetime-local" id="ot_start"><input type="datetime-local" id="ot_end"><textarea id="ot_purpose" placeholder="Purpose..."></textarea><button type="button" class="submit-btn" style="background:#27ae60;" onclick="submitRequest('ot')">Submit</button></form></div>
+                <div class="form-card">
+                    <h3>📝 Leave</h3>
+                    <form id="leaveForm" class="form-grid">
+                        <select id="l_type"><option>Sick Leave</option><option>Vacation Leave</option></select>
+                        <div></div>
+                        <input type="date" id="l_start"><input type="date" id="l_end">
+                        <textarea id="l_reason" placeholder="Reason..."></textarea>
+                        
+                        <div style="background:#f4f6f8; padding:15px; border-radius:6px; font-size:11px; color:#555; border: 1px solid #eee; grid-column: span 2;">
+                            <label style="display:flex; gap:8px; margin-bottom:10px; cursor:pointer; align-items:flex-start;">
+                                <input type="checkbox" id="l_agree1" style="width:auto; margin-top:2px;">
+                                <span>I confirm that the information submitted has undergone a thorough double-check process, ensuring its accuracy and reliability, especially the email addresses, to the best of my knowledge and abilities. <b style="color:red;">*</b></span>
+                            </label>
+                            <label style="display:flex; gap:8px; cursor:pointer; align-items:flex-start;">
+                                <input type="checkbox" id="l_agree2" style="width:auto; margin-top:2px;">
+                                <span>I understand that falsifying information is a serious offense, constituting fraud, and I acknowledge that engaging in such behavior can lead to severe consequences, including termination of employment. <b style="color:red;">*</b></span>
+                            </label>
+                        </div>
+                        
+                        <button type="button" class="submit-btn" style="grid-column: span 2;" onclick="submitRequest('leave')">Submit</button>
+                    </form>
+                </div>
+                
+                <div class="form-card" style="border-left: 5px solid #27ae60;">
+                    <h3>⏰ Overtime</h3>
+                    <form id="otForm" class="form-grid">
+                        <select id="ot_type"><option>Regular Overtime</option><option>Duty on Rest Day</option></select>
+                        <div></div>
+                        <input type="datetime-local" id="ot_start"><input type="datetime-local" id="ot_end">
+                        <textarea id="ot_purpose" placeholder="Purpose..."></textarea>
+                        
+                        <div style="background:#f4f6f8; padding:15px; border-radius:6px; font-size:11px; color:#555; border: 1px solid #eee; grid-column: span 2;">
+                            <label style="display:flex; gap:8px; margin-bottom:10px; cursor:pointer; align-items:flex-start;">
+                                <input type="checkbox" id="ot_agree1" style="width:auto; margin-top:2px;">
+                                <span>I confirm that the information submitted has undergone a thorough double-check process, ensuring its accuracy and reliability, especially the email addresses, to the best of my knowledge and abilities. <b style="color:red;">*</b></span>
+                            </label>
+                            <label style="display:flex; gap:8px; cursor:pointer; align-items:flex-start;">
+                                <input type="checkbox" id="ot_agree2" style="width:auto; margin-top:2px;">
+                                <span>I understand that falsifying information is a serious offense, constituting fraud, and I acknowledge that engaging in such behavior can lead to severe consequences, including termination of employment. <b style="color:red;">*</b></span>
+                            </label>
+                        </div>
+
+                        <button type="button" class="submit-btn" style="background:#27ae60; grid-column: span 2;" onclick="submitRequest('ot')">Submit</button>
+                    </form>
+                </div>
+                
                 <div class="form-card" style="border-left: 5px solid #e74c3c;">
                     <h3 style="color: #e74c3c;">Attendance Dispute</h3>
                     <form id="disputeForm" class="form-grid">
@@ -231,7 +284,7 @@ if (isset($_GET['edit_id'])) {
                             </div>
                         </div>
                         <textarea id="d_reason" placeholder="Explain..." rows="3"></textarea>
-                        <button type="button" class="submit-btn" style="background:#e74c3c;" onclick="submitRequest('dispute')">Submit Dispute</button>
+                        <button type="button" class="submit-btn" style="background:#e74c3c; grid-column: span 2;" onclick="submitRequest('dispute')">Submit Dispute</button>
                     </form>
                 </div>
             </div>
@@ -240,11 +293,41 @@ if (isset($_GET['edit_id'])) {
         <div id="my-attendance" class="view-content">
             <div class="header">
                 <div style="display:flex; align-items:center; gap:10px;"><h2 style="margin:0;">Attendance History</h2></div>
-                <div style="display:flex;"><input type="date" id="my_start" onchange="loadMyAttendance()"><input type="date" id="my_end" style="margin-left:5px;" onchange="loadMyAttendance()"></div>
+                
+                <div style="background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 15px; font-size: 13px; font-weight: bold; color: white;">
+                    Total Hours: <span id="totalHoursSum">0.00</span>
+                </div>
+                <div style="display:flex;">
+                    <input type="date" id="range_start" class="search-box" style="width:130px;" onchange="loadMyAttendance()">
+                    <input type="date" id="range_end" class="search-box" style="width:130px; margin-left:5px;" onchange="loadMyAttendance()">
+                </div>
             </div>
+            
+            <div class="stats-container">
+                <div class="stat-badge badge-present">Present: <span id="countPresent" style="font-size:16px;">0</span></div>
+                <div class="stat-badge badge-absent">Absent: <span id="countAbsent" style="font-size:16px;">0</span></div>
+                <div class="stat-badge badge-late">Late / Tardy: <span id="countLate" style="font-size:16px;">0</span></div>
+                <div class="stat-badge badge-leave">On Leave: <span id="countLeave" style="font-size:16px;">0</span></div>
+            </div>
+
             <div class="container">
-                <div style="margin-bottom:10px;"><select class="search-box" onchange="filterTable('myAttTable', this.value)" style="margin-left:0; width:150px;"><option value="">Show All Statuses</option><option value="Present">Present</option><option value="Late">Late</option><option value="Absent">Absent</option><option value="Overtime">Overtime</option><option value="On Leave">On Leave</option></select></div>
-                <table id="myAttTable"><thead><tr onclick="sortTable('myAttTable', 0)"><th>Date ⬍</th><th>In</th><th>Out</th><th>Break In</th><th>Break Out</th><th>Lunch</th><th>Status</th><th>Hrs</th></tr></thead><tbody id="myAttendanceBody"></tbody></table>
+                <div style="margin-bottom:10px;">
+                    <select class="search-box" onchange="filterTable('myAttTable', this.value)" style="margin-left:0; width:150px;">
+                        <option value="">Show All Statuses</option>
+                        <option value="Present">Present</option>
+                        <option value="Late">Late</option>
+                        <option value="Tardy">Tardy</option>
+                        <option value="Absent">Absent</option>
+                        <option value="Overtime">Overtime</option>
+                        <option value="On Leave">On Leave</option>
+                        <option value="Undertime">Undertime</option>
+                        <option value="Duty on Rest Day">Duty on Rest Day</option>
+                    </select>
+                </div>
+                <table id="myAttTable">
+                    <thead><tr onclick="sortTable('myAttTable', 0)"><th>Date ⬍</th><th>In</th><th>Out</th><th>Break In</th><th>Break Out</th><th>Status ⬍</th><th>Hrs ⬍</th></tr></thead>
+                    <tbody id="myAttendanceBody"></tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -351,6 +434,34 @@ if (isset($_GET['edit_id'])) {
 
         function toggleTimeInput(val) { document.getElementById('timeInputDiv').style.display = val.includes('Forgot') ? 'block' : 'none'; }
 
+        // ✅ NEW: CALCULATE HOURS & SUMMARY STATISTICS
+        function updateTableSummaries(tid) {
+            let sum = 0;
+            let counts = { present: 0, absent: 0, late: 0, leave: 0 };
+            
+            const rows = Array.from(document.getElementById(tid).tBodies[0].rows);
+            rows.forEach(r => {
+                if (r.style.display !== 'none' && r.cells.length > 1) { // Skip empty state rows
+                    // Read the last column for hours, second to last for status
+                    let val = parseFloat(r.cells[r.cells.length - 1].innerText);
+                    if (!isNaN(val)) sum += val;
+                    
+                    let status = r.cells[r.cells.length - 2].innerText.toLowerCase();
+                    if (status.includes('present')) counts.present++;
+                    else if (status.includes('absent')) counts.absent++;
+                    else if (status.includes('late') || status.includes('tard')) counts.late++;
+                    else if (status.includes('leave')) counts.leave++;
+                }
+            });
+            
+            // Update UI
+            document.getElementById('totalHoursSum').innerText = sum.toFixed(2);
+            document.getElementById('countPresent').innerText = counts.present;
+            document.getElementById('countAbsent').innerText = counts.absent;
+            document.getElementById('countLate').innerText = counts.late;
+            document.getElementById('countLeave').innerText = counts.leave;
+        }
+
         // SORTING & FILTERING
         function sortTable(tid, n) {
             let table = document.getElementById(tid), tbody = table.tBodies[0], rows = Array.from(tbody.rows);
@@ -362,6 +473,7 @@ if (isset($_GET['edit_id'])) {
             rows.forEach(r => tbody.appendChild(r));
             table.setAttribute('data-asc', !asc);
         }
+
         function filterTable(tid, val) {
             let filter = val.toLowerCase();
             let rows = document.getElementById(tid).getElementsByTagName("tr");
@@ -369,6 +481,7 @@ if (isset($_GET['edit_id'])) {
                 let cell = rows[i].innerText.toLowerCase();
                 rows[i].style.display = cell.indexOf(filter) > -1 ? "" : "none";
             }
+            if (tid === 'myAttTable') updateTableSummaries(tid);
         }
 
         async function refreshTable() {
@@ -546,27 +659,70 @@ if (isset($_GET['edit_id'])) {
             
             const renderDisp = (item) => `<tr><td>${item.sub_type}</td><td>${item.start_date}</td><td>${item.reason}</td><td><span class="status-pill status-${item.status}">${item.status}</span></td><td>${item.created_at}</td><td style="color:blue; font-style:italic;">${item.remarks || '--'}</td></tr>`;
             
-            document.getElementById("myLeaveLogs").innerHTML = leaves.map(renderRow).join('');
-            document.getElementById("myOTLogs").innerHTML = overtime.map(renderRow).join('');
-            document.getElementById("myDisputeLogs").innerHTML = disputes.map(renderDisp).join('');
+            document.getElementById("myLeaveLogs").innerHTML = leaves.length ? leaves.map(renderRow).join('') : '<tr><td colspan="6" style="text-align:center;">No records</td></tr>';
+            document.getElementById("myOTLogs").innerHTML = overtime.length ? overtime.map(renderRow).join('') : '<tr><td colspan="6" style="text-align:center;">No records</td></tr>';
+            document.getElementById("myDisputeLogs").innerHTML = disputes.length ? disputes.map(renderDisp).join('') : '<tr><td colspan="6" style="text-align:center;">No records</td></tr>';
         }
 
         async function loadMyAttendance() {
             const d = new Date(), s = new Date(d.getFullYear(), 0, 1).toISOString().split('T')[0], e = d.toISOString().split('T')[0];
-            document.getElementById('my_start').value = s; document.getElementById('my_end').value = e;
-            const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${MY_ID}&start_date=${s}&end_date=${e}`);
+            
+            const startInput = document.getElementById('range_start').value || s;
+            const endInput = document.getElementById('range_end').value || e;
+            document.getElementById('range_start').value = startInput;
+            document.getElementById('range_end').value = endInput;
+
+            const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${MY_ID}&start_date=${startInput}&end_date=${endInput}`);
             const data = await res.json();
-            document.getElementById('myAttendanceBody').innerHTML = data.map(row => `<tr><td>${row.date}</td><td>${row.time_in || '--:--'}</td><td>${row.time_out || '--:--'}</td><td>${row.break_in || '--:--'}</td><td>${row.break_out || '--:--'}</td><td>${row.lunch_break}</td><td>${row.status}</td><td>${row.total_hours || '0.00'} hrs</td></tr>`).join('');
+            
+            document.getElementById('myAttendanceBody').innerHTML = data.length ? data.map(row => `<tr><td>${row.date}</td><td>${row.time_in || '--:--'}</td><td>${row.time_out || '--:--'}</td><td>${row.break_in || '--:--'}</td><td>${row.break_out || '--:--'}</td><td><span class="status-pill status-${(row.status||'').replace(/\s/g,'')}">${row.status}</span></td><td>${row.total_hours || '0.00'}</td></tr>`).join('') : '<tr><td colspan="7" style="text-align:center;">No records found</td></tr>';
+            
+            updateTableSummaries('myAttTable');
         }
         
         async function submitRequest(type) {
             let endpoint, payload, formId;
+            
             if (type === 'leave') { 
+                const agree1 = document.getElementById('l_agree1').checked ? 1 : 0;
+                const agree2 = document.getElementById('l_agree2').checked ? 1 : 0;
+                
+                if (!agree1 || !agree2) {
+                    alert("⚠️ You must check both agreement boxes before submitting.");
+                    return;
+                }
+
                 endpoint = '/users/file_leave.php'; formId = 'leaveForm'; 
-                payload = { employee_id: MY_ID, leave_type: document.getElementById('l_type').value, start_date: document.getElementById('l_start').value, end_date: document.getElementById('l_end').value, reason: document.getElementById('l_reason').value, agreement_1: 1, agreement_2: 1 }; 
+                payload = { 
+                    employee_id: MY_ID, 
+                    leave_type: document.getElementById('l_type').value, 
+                    start_date: document.getElementById('l_start').value, 
+                    end_date: document.getElementById('l_end').value, 
+                    reason: document.getElementById('l_reason').value, 
+                    agreement_1: agree1, 
+                    agreement_2: agree2 
+                }; 
+                
             } else if (type === 'ot') {
+                const agree1 = document.getElementById('ot_agree1').checked ? 1 : 0;
+                const agree2 = document.getElementById('ot_agree2').checked ? 1 : 0;
+                
+                if (!agree1 || !agree2) {
+                    alert("⚠️ You must check both agreement boxes before submitting.");
+                    return;
+                }
+
                 endpoint = '/users/file_overtime.php'; formId = 'otForm'; 
-                payload = { employee_id: MY_ID, ot_type: document.getElementById('ot_type').value, start_time: document.getElementById('ot_start').value, end_time: document.getElementById('ot_end').value, purpose: document.getElementById('ot_purpose').value, agreement_1: 1, agreement_2: 1 };
+                payload = { 
+                    employee_id: MY_ID, 
+                    ot_type: document.getElementById('ot_type').value, 
+                    start_time: document.getElementById('ot_start').value, 
+                    end_time: document.getElementById('ot_end').value, 
+                    purpose: document.getElementById('ot_purpose').value, 
+                    agreement_1: agree1, 
+                    agreement_2: agree2 
+                };
+                
             } else if (type === 'dispute') {
                 endpoint = '/users/file_dispute.php'; formId = 'disputeForm';
                 let reason = document.getElementById('d_reason').value;
@@ -585,6 +741,7 @@ if (isset($_GET['edit_id'])) {
         
         window.onload = function() {
             const d = new Date(), s = new Date(d.getFullYear(), 0, 1).toISOString().split('T')[0], e = d.toISOString().split('T')[0];
+            document.getElementById('range_start').value = s; document.getElementById('range_end').value = e;
             refreshTable(); loadApprovals(); loadMyAttendance();
         }
     </script>
