@@ -25,4 +25,4 @@ function verifyAccess($allowed_roles) {
     ]);
     exit; 
 }
-?>
+?> 
