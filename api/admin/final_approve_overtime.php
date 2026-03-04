@@ -3,7 +3,7 @@ require_once '../config/db.php';
 require_once '../middleware/auth.php';
 
 verifyAccess([3, 4]);
-$acting_emp_id = $_SESSION['employee_id'];
+$acting_user_id = $_SESSION['user_id'];
 $data = json_decode(file_get_contents("php://input"));
 
 try {
@@ -11,7 +11,7 @@ try {
     $status = ($data->action === 'APPROVE') ? 'Approved' : 'Denied';
 
     $stmt = $pdo->prepare("UPDATE overtime_requests SET status = ?, approved_by = ? WHERE ot_id = ?");
-    $stmt->execute([$status, $acting_emp_id, $data->ot_id]);
+    $stmt->execute([$status, $acting_user_id, $data->ot_id]);
 
     if ($status === 'Approved') {
         $get_ot = $pdo->prepare("SELECT employee_id, start_time, end_time, ot_type FROM overtime_requests WHERE ot_id = ?");

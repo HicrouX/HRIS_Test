@@ -236,8 +236,12 @@ try {
                     <div class="form-card" style="border-left: 5px solid #27ae60;">
                         <h3>⏰ Overtime</h3>
                         <form id="otForm" class="form-grid">
-                            <select id="ot_type"><option>Regular Overtime</option><option>Duty on Rest Day</option></select><div></div>
-                            <input type="datetime-local" id="ot_start"><input type="datetime-local" id="ot_end">
+                            <select id="ot_type"><option>Regular Overtime</option><option>Duty on Rest Day</option></select>
+                            <div style="grid-column: span 1;"><label style="font-size:12px; font-weight:bold;">Date:</label><input type="date" id="ot_date" required></div>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                                <div><label style="font-size:11px; font-weight:bold;">Start Time:</label><input type="time" id="ot_start_time" required></div>
+                                <div><label style="font-size:11px; font-weight:bold;">End Time:</label><input type="time" id="ot_end_time" required></div>
+                            </div>
                             <textarea id="ot_purpose" placeholder="Purpose..."></textarea>
                             
                             <div style="background:#f4f6f8; padding:15px; border-radius:6px; font-size:11px; color:#555; border: 1px solid #eee; grid-column: span 2;">

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 04, 2026 at 02:48 AM
+-- Generation Time: Mar 04, 2026 at 06:48 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -92,7 +92,8 @@ INSERT INTO `attendance_logs` (`attendance_id`, `cluster_id`, `employee_id`, `ti
 --
 
 CREATE TABLE `break_logs` (
-  `cluster_id` int(11) NOT NULL,
+  `break_log_id` int(11) NOT NULL,
+  `cluster_id` int(11) DEFAULT NULL,
   `time_log_id` int(11) NOT NULL,
   `break_start` datetime NOT NULL,
   `break_end` datetime DEFAULT NULL,
@@ -153,7 +154,7 @@ INSERT INTO `cluster_members` (`cluster_id`, `employee_id`, `assigned_at`) VALUE
 --
 
 CREATE TABLE `employees` (
-  `employee_id` int(11) NOT NULL,
+  `employee_id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `first_name` varchar(50) NOT NULL,
   `middle_name` varchar(50) DEFAULT NULL,
@@ -162,27 +163,28 @@ CREATE TABLE `employees` (
   `birthdate` date DEFAULT NULL,
   `email` varchar(100) NOT NULL,
   `position` varchar(50) DEFAULT NULL,
-  `cluster` varchar(100) DEFAULT NULL,
+  `cluster_id` int(11) DEFAULT NULL,
   `contact_number` varchar(20) DEFAULT NULL,
   `employment_status` varchar(20) DEFAULT NULL,
   `employee_type` varchar(30) DEFAULT NULL,
-  `date_hired` date NOT NULL
+  `date_hired` date NOT NULL,
+  PRIMARY KEY (`employee_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `employees`
 --
 
-INSERT INTO `employees` (`employee_id`, `user_id`, `first_name`, `middle_name`, `last_name`, `address`, `birthdate`, `email`, `position`, `cluster`, `contact_number`, `employment_status`, `employee_type`, `date_hired`) VALUES
+INSERT INTO `employees` (`employee_id`, `user_id`, `first_name`, `middle_name`, `last_name`, `address`, `birthdate`, `email`, `position`, `cluster_id`, `contact_number`, `employment_status`, `employee_type`, `date_hired`) VALUES
 (1, 1, 'John', NULL, 'Super', NULL, NULL, 'super@hris.com', 'System Owner', NULL, NULL, NULL, 'Permanent', '2023-01-01'),
 (2, 2, 'Jane', NULL, 'Admin', NULL, NULL, 'admin@hris.com', 'HR Manager', NULL, NULL, NULL, 'Permanent', '2023-02-15'),
-(3, 3, 'Robert', NULL, 'Coach', NULL, NULL, 'coach1@hris.com', 'Team Lead', NULL, NULL, NULL, 'Permanent', '2023-03-10'),
-(4, 4, 'Sarah', NULL, 'Manager', NULL, NULL, 'coach2@hris.com', 'Operations Manager', NULL, NULL, NULL, 'Permanent', '2023-04-05'),
-(5, 5, 'Alice', NULL, 'Smith', NULL, NULL, 'emp1@hris.com', 'Developer', NULL, NULL, NULL, 'Regular', '2024-01-10'),
-(6, 6, 'Bob', NULL, 'Jones', NULL, NULL, 'emp2@hris.com', 'Designer', NULL, NULL, NULL, 'Regular', '2024-01-12'),
-(7, 7, 'Charlie', NULL, 'Brown', NULL, NULL, 'emp3@hris.com', 'Support', NULL, NULL, NULL, 'Probationary', '2024-02-01'),
-(8, 8, 'David', NULL, 'Wilson', NULL, NULL, 'emp4@hris.com', 'Developer', NULL, NULL, NULL, 'Regular', '2024-02-15'),
-(9, 9, 'Eve', NULL, 'Davis', NULL, NULL, 'emp5@hris.com', 'QA Engineer', NULL, NULL, NULL, 'Regular', '2024-03-01');
+(3, 3, 'Robert', NULL, 'Coach', NULL, NULL, 'coach1@hris.com', 'Team Lead', 1, NULL, NULL, 'Permanent', '2023-03-10'),
+(4, 4, 'Sarah', NULL, 'Manager', NULL, NULL, 'coach2@hris.com', 'Operations Manager', 2, NULL, NULL, 'Permanent', '2023-04-05'),
+(5, 5, 'Alice', NULL, 'Smith', NULL, NULL, 'emp1@hris.com', 'Developer', 1, NULL, NULL, 'Regular', '2024-01-10'),
+(6, 6, 'Bob', NULL, 'Jones', NULL, NULL, 'emp2@hris.com', 'Designer', 2, NULL, NULL, 'Regular', '2024-01-12'),
+(7, 7, 'Charlie', NULL, 'Brown', NULL, NULL, 'emp3@hris.com', 'Support', 2, NULL, NULL, 'Probationary', '2024-02-01'),
+(8, 8, 'David', NULL, 'Wilson', NULL, NULL, 'emp4@hris.com', 'Developer', 1, NULL, NULL, 'Regular', '2024-02-15'),
+(9, 9, 'Eve', NULL, 'Davis', NULL, NULL, 'emp5@hris.com', 'QA Engineer', 1, NULL, NULL, 'Regular', '2024-03-01');
 
 -- --------------------------------------------------------
 
@@ -374,6 +376,7 @@ ALTER TABLE `attendance_disputes`
 --
 ALTER TABLE `attendance_logs`
   ADD PRIMARY KEY (`attendance_id`),
+  ADD UNIQUE KEY `unique_employee_date` (`employee_id`,`attendance_date`),
   ADD KEY `fk_att_cluster` (`cluster_id`),
   ADD KEY `fk_att_emp` (`employee_id`);
 
@@ -381,7 +384,8 @@ ALTER TABLE `attendance_logs`
 -- Indexes for table `break_logs`
 --
 ALTER TABLE `break_logs`
-  ADD PRIMARY KEY (`cluster_id`),
+  ADD PRIMARY KEY (`break_log_id`),
+  ADD KEY `fk_bl_cluster` (`cluster_id`),
   ADD KEY `fk_bl_tl` (`time_log_id`);
 
 --
@@ -402,8 +406,8 @@ ALTER TABLE `cluster_members`
 -- Indexes for table `employees`
 --
 ALTER TABLE `employees`
-  ADD PRIMARY KEY (`employee_id`),
-  ADD KEY `fk_emp_users` (`user_id`);
+  ADD KEY `fk_emp_users` (`user_id`),
+  ADD KEY `fk_emp_cluster` (`cluster_id`);
 
 --
 -- Indexes for table `leave_requests`
@@ -473,6 +477,12 @@ ALTER TABLE `attendance_disputes`
 --
 ALTER TABLE `attendance_logs`
   MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `break_logs`
+--
+ALTER TABLE `break_logs`
+  MODIFY `break_log_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `clusters`
@@ -550,6 +560,7 @@ ALTER TABLE `attendance_logs`
 -- Constraints for table `break_logs`
 --
 ALTER TABLE `break_logs`
+  ADD CONSTRAINT `fk_bl_cluster` FOREIGN KEY (`cluster_id`) REFERENCES `clusters` (`cluster_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_bl_tl` FOREIGN KEY (`time_log_id`) REFERENCES `time_logs` (`time_log_id`) ON DELETE CASCADE;
 
 --
@@ -569,6 +580,7 @@ ALTER TABLE `cluster_members`
 -- Constraints for table `employees`
 --
 ALTER TABLE `employees`
+  ADD CONSTRAINT `fk_emp_cluster` FOREIGN KEY (`cluster_id`) REFERENCES `clusters` (`cluster_id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_emp_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --

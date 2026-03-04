@@ -15,7 +15,7 @@ try {
             LEFT JOIN cluster_members cm ON e.employee_id = cm.employee_id
             LEFT JOIN clusters c ON cm.cluster_id = c.cluster_id
             LEFT JOIN users u_coach ON c.user_id = u_coach.user_id
-            LEFT JOIN employees coach ON u_coach.employee_id = coach.employee_id
+            LEFT JOIN employees coach ON u_coach.user_id = coach.user_id
             WHERE o.status = 'Endorsed' 
             ORDER BY o.created_at ASC";
 

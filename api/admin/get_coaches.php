@@ -7,12 +7,11 @@ require_once '../middleware/auth.php';
 verifyAccess([3, 4]);
 
 try {
-    $sql = "SELECT e.employee_id, e.first_name, e.last_name 
+    $sql = "SELECT e.employee_id, e.first_name, e.last_name
             FROM employees e
-            JOIN users u ON e.employee_id = u.employee_id
-            WHERE u.role_id = 2 
-            ORDER BY e.first_name ASC";
-            
+            JOIN users u ON e.user_id = u.user_id
+            WHERE u.role_id = 2
+            ORDER BY e.first_name ASC";            
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
     echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));

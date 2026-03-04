@@ -7,7 +7,7 @@ require_once '../middleware/auth.php';
 verifyAccess([2, 3, 4]); 
 
 $data = json_decode(file_get_contents("php://input"));
-$acting_emp_id = $_SESSION['employee_id']; // The ID of the person reviewing
+$acting_user_id = $_SESSION['user_id']; // The ID of the person reviewing
 
 try {
     $pdo->beginTransaction();
@@ -17,7 +17,7 @@ try {
     $column = ($data->status === 'Approved') ? 'approved_by' : 'reviewed_by';
     
     $stmt = $pdo->prepare("UPDATE leave_requests SET status = ?, $column = ? WHERE leave_id = ?");
-    $stmt->execute([$data->status, $acting_emp_id, $data->leave_id]);
+    $stmt->execute([$data->status, $acting_user_id, $data->leave_id]);
 
     // 2. If approved, populate the attendance table for the entire duration
     if ($data->status === 'Approved') {

@@ -242,7 +242,11 @@ try {
                     <h3 style="margin-top:0; color: #27ae60;">File Overtime</h3>
                     <form id="otForm" class="form-grid">
                         <select id="ot_type" class="form-input"><option value="Regular Overtime">Regular Overtime</option><option value="Duty on Rest Day">Duty on Rest Day</option></select>
-                        <input type="datetime-local" id="ot_start" required><input type="datetime-local" id="ot_end" required>
+                        <div style="grid-column: span 1;"><label style="font-size:12px; font-weight:bold;">Date:</label><input type="date" id="ot_date" required></div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <div><label style="font-size:11px; font-weight:bold;">Start Time:</label><input type="time" id="ot_start_time" required></div>
+                            <div><label style="font-size:11px; font-weight:bold;">End Time:</label><input type="time" id="ot_end_time" required></div>
+                        </div>
                         <textarea id="ot_purpose" placeholder="Purpose..." rows="2" required></textarea>
                         
                         <div style="background:#f4f6f8; padding:15px; border-radius:6px; font-size:11px; color:#555; border: 1px solid #eee;">
@@ -436,18 +440,38 @@ try {
                 const agree2 = document.getElementById('ot_agree2').checked ? 1 : 0;
                 if (!agree1 || !agree2) { alert("⚠️ You must check both agreement boxes before submitting."); return; }
 
-                const start = new Date(document.getElementById('ot_start').value);
-                const end = new Date(document.getElementById('ot_end').value);
+                const dateVal = document.getElementById('ot_date').value;
+                const startVal = document.getElementById('ot_start_time').value;
+                const endVal = document.getElementById('ot_end_time').value;
+                
+                if (!dateVal || !startVal || !endVal) { alert("⚠️ Please fill in all date and time fields."); return; }
+
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+                if (dateVal !== yesterdayStr) {
+                    alert(`⚠️ Overtime can only be filed for yesterday (${yesterdayStr}).`);
+                    return;
+                }
+
+                const startStr = `${dateVal} ${startVal}`;
+                const endStr = `${dateVal} ${endVal}`;
+
+                const start = new Date(startStr);
+                const end = new Date(endStr);
                 const diffMs = end - start;
                 const diffHrs = diffMs / (1000 * 60 * 60);
+                
+                if (diffHrs <= 0) { alert("⚠️ Invalid time range: End time must be after start time."); return; }
                 if (diffHrs > 2) { alert("⚠️ Cannot submit: Overtime is limited to 2 hours per request."); return; }
                 
                 endpoint = '/users/file_overtime.php'; formId = 'otForm';
                 payload = { 
                     employee_id: EMP_ID, 
                     ot_type: document.getElementById('ot_type').value, 
-                    start_time: document.getElementById('ot_start').value, 
-                    end_time: document.getElementById('ot_end').value, 
+                    start_time: startStr, 
+                    end_time: endStr, 
                     purpose: document.getElementById('ot_purpose').value, 
                     agreement_1: agree1, 
                     agreement_2: agree2 

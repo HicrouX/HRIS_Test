@@ -10,7 +10,7 @@ require_once '../config/db.php';
 require_once '../middleware/auth.php';
 
 verifyAccess([3, 4]);
-$acting_emp_id = $_SESSION['employee_id']; 
+$acting_user_id = $_SESSION['user_id']; 
 
 $data = json_decode(file_get_contents("php://input"));
 
@@ -24,9 +24,9 @@ try {
     $pdo->beginTransaction();
     $status = ($data->action === 'APPROVE') ? 'Approved' : 'Denied';
 
-    // Update with the admin's employee_id
+    // Update with the admin's user_id
     $stmt = $pdo->prepare("UPDATE leave_requests SET status = ?, approved_by = ? WHERE leave_id = ?");
-    $stmt->execute([$status, $acting_emp_id, $data->leave_id]);
+    $stmt->execute([$status, $acting_user_id, $data->leave_id]);
 
     if ($status === 'Approved') {
         $get_leave = $pdo->prepare("SELECT employee_id, start_date, end_date FROM leave_requests WHERE leave_id = ?");

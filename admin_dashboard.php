@@ -244,10 +244,13 @@ if (isset($_GET['edit_id'])) {
                     <h3>⏰ Overtime</h3>
                     <form id="otForm" class="form-grid">
                         <select id="ot_type"><option>Regular Overtime</option><option>Duty on Rest Day</option></select>
-                        <div></div>
-                        <input type="datetime-local" id="ot_start"><input type="datetime-local" id="ot_end">
+                        <div style="grid-column: span 1;"><label style="font-size:12px; font-weight:bold;">Date:</label><input type="date" id="ot_date" required></div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; grid-column: span 2;">
+                            <div><label style="font-size:11px; font-weight:bold;">Start Time:</label><input type="time" id="ot_start_time" required></div>
+                            <div><label style="font-size:11px; font-weight:bold;">End Time:</label><input type="time" id="ot_end_time" required></div>
+                        </div>
                         <textarea id="ot_purpose" placeholder="Purpose..."></textarea>
-                        
+
                         <div style="background:#f4f6f8; padding:15px; border-radius:6px; font-size:11px; color:#555; border: 1px solid #eee; grid-column: span 2;">
                             <label style="display:flex; gap:8px; margin-bottom:10px; cursor:pointer; align-items:flex-start;">
                                 <input type="checkbox" id="ot_agree1" style="width:auto; margin-top:2px;">
@@ -261,8 +264,7 @@ if (isset($_GET['edit_id'])) {
 
                         <button type="button" class="submit-btn" style="background:#27ae60; grid-column: span 2;" onclick="submitRequest('ot')">Submit</button>
                     </form>
-                </div>
-                
+                </div>                
                 <div class="form-card" style="border-left: 5px solid #e74c3c;">
                     <h3 style="color: #e74c3c;">Attendance Dispute</h3>
                     <form id="disputeForm" class="form-grid">
@@ -712,12 +714,29 @@ if (isset($_GET['edit_id'])) {
                     return;
                 }
 
+                const dateVal = document.getElementById('ot_date').value;
+                const startVal = document.getElementById('ot_start_time').value;
+                const endVal = document.getElementById('ot_end_time').value;
+                
+                if (!dateVal || !startVal || !endVal) { alert("⚠️ Please fill in all date and time fields."); return; }
+
+                const startStr = `${dateVal} ${startVal}`;
+                const endStr = `${dateVal} ${endVal}`;
+
+                const start = new Date(startStr);
+                const end = new Date(endStr);
+                const diffMs = end - start;
+                const diffHrs = diffMs / (1000 * 60 * 60);
+                
+                if (diffHrs <= 0) { alert("⚠️ Invalid time range: End time must be after start time."); return; }
+                if (diffHrs > 2) { alert("⚠️ Cannot submit: Overtime is limited to 2 hours per request."); return; }
+
                 endpoint = '/users/file_overtime.php'; formId = 'otForm'; 
                 payload = { 
                     employee_id: MY_ID, 
                     ot_type: document.getElementById('ot_type').value, 
-                    start_time: document.getElementById('ot_start').value, 
-                    end_time: document.getElementById('ot_end').value, 
+                    start_time: startStr, 
+                    end_time: endStr, 
                     purpose: document.getElementById('ot_purpose').value, 
                     agreement_1: agree1, 
                     agreement_2: agree2 

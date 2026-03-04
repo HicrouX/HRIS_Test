@@ -4,23 +4,29 @@ header("Content-Type: application/json; charset=UTF-8");
 require_once '../config/db.php';
 require_once '../middleware/auth.php';
 
-verifyAccess([3, 4]); 
-$current_admin_emp_id = $_SESSION['employee_id'];
+verifyAccess([3, 4]);
 
 try {
-    $sql = "SELECT d.*, e.first_name, e.last_name, r.role_name
-            FROM attendance_disputes d
-            JOIN employees e ON d.employee_id = e.employee_id
-            JOIN users u ON e.employee_id = u.employee_id
-            JOIN roles r ON u.role_id = r.role_id
-            WHERE d.status IN ('Pending', 'Endorsed')
-            AND d.employee_id != ? 
-            ORDER BY d.created_at ASC";
+    // Fetches leaves that are 'Endorsed' (Reviewed by a Coach)
+    // Joins with employees to get applicant name
+    // Joins with employees again (via users) to get the endorser's name
+    $sql = "SELECT 
+                lr.*, 
+                e.first_name, 
+                e.last_name,
+                CONCAT(endorser_e.first_name, ' ', endorser_e.last_name) AS endorser_name
+            FROM leave_requests lr
+            JOIN employees e ON lr.employee_id = e.employee_id
+            LEFT JOIN users endorser_u ON lr.reviewed_by = endorser_u.user_id
+            LEFT JOIN employees endorser_e ON endorser_u.user_id = endorser_e.user_id
+            WHERE lr.status = 'Endorsed'
+            ORDER BY lr.created_at ASC";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$current_admin_emp_id]);
+    $stmt->execute();
     echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
 } catch (Exception $e) {
-    echo json_encode([]);
+    http_response_code(500);
+    echo json_encode(["error" => $e->getMessage()]);
 }
 ?>

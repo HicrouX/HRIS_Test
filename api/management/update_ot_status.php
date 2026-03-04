@@ -8,7 +8,7 @@ verifyAccess([2, 3, 4]);
 $data = json_decode(file_get_contents("php://input"));
 $action = $data->action; 
 $ot_id = $data->ot_id;
-$acting_emp_id = $_SESSION['employee_id'];
+$acting_user_id = $_SESSION['user_id'];
 
 // Map Action to DB Enum
 $new_status = match($action) {
@@ -25,7 +25,7 @@ if ($new_status && $ot_id) {
         // 1. Update the Request Status
         $sql = "UPDATE overtime_requests SET status = ?, approved_by = ? WHERE ot_id = ?";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$new_status, ($new_status === 'Approved' ? $acting_emp_id : null), $ot_id]);
+        $stmt->execute([$new_status, ($new_status === 'Approved' ? $acting_user_id : null), $ot_id]);
 
         // 2. Sync to Attendance Table if Approved
         if ($new_status === 'Approved') {

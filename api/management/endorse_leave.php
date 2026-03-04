@@ -6,8 +6,8 @@ require_once '../middleware/auth.php';
 // Allow Coach (2), Admin (3), Super Admin (4)
 verifyAccess([2, 3, 4]);
 
-// The 'acting coach' is the currently logged-in employee
-$acting_emp_id = $_SESSION['employee_id']; 
+// The 'acting coach' is the currently logged-in user
+$acting_user_id = $_SESSION['user_id']; 
 
 $data = json_decode(file_get_contents("php://input"));
 
@@ -24,7 +24,7 @@ try {
                            SET status = 'Endorsed', reviewed_by = ? 
                            WHERE leave_id = ? AND status = 'Pending'");
     
-    $stmt->execute([$acting_emp_id, $data->leave_id]);
+    $stmt->execute([$acting_user_id, $data->leave_id]);
 
     if ($stmt->rowCount() > 0) {
         echo json_encode(["success" => "Leave endorsed and forwarded to Admin."]);
