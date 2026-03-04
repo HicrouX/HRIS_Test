@@ -1,14 +1,12 @@
 <?php
-// api/admin/get_coaches.php
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
-
 require_once '../config/db.php';
 require_once '../middleware/auth.php';
+
 verifyAccess([3, 4]);
 
 try {
-    // Find employees who have a User account with Role ID 2 (Coach)
     $sql = "SELECT e.employee_id, e.first_name, e.last_name 
             FROM employees e
             JOIN users u ON e.employee_id = u.employee_id

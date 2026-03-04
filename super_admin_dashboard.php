@@ -23,7 +23,7 @@ if (isset($_GET['delete_id'])) {
         $stmt->execute([$_GET['delete_id']]);
         
         // Step 2: Delete the attendance record
-        $stmt = $pdo->prepare("DELETE FROM attendance WHERE attendance_id = ?");
+        $stmt = $pdo->prepare("DELETE FROM attendance_logs WHERE attendance_id = ?");
         $stmt->execute([$_GET['delete_id']]);
         
         $pdo->commit();
@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_full_edit'])) {
         $pdo->beginTransaction();
 
         // Step 1: Update Status in 'attendance' table
-        $stmt = $pdo->prepare("UPDATE attendance SET attendance_status = ? WHERE attendance_id = ?");
+        $stmt = $pdo->prepare("UPDATE attendance_logs SET attendance_status = ? WHERE attendance_id = ?");
         $stmt->execute([$status, $id]);
 
         // Step 2: Update or Insert into 'time_logs' table
@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_full_edit'])) {
             $stmt->execute([$t_in, $t_out, $id]);
         } else if ($t_in || $t_out) {
             // Create a new log if one didn't exist (e.g., changing Absent to Present)
-            $infoStmt = $pdo->prepare("SELECT employee_id, attendance_date FROM attendance WHERE attendance_id = ?");
+            $infoStmt = $pdo->prepare("SELECT employee_id, attendance_date FROM attendance_logs WHERE attendance_id = ?");
             $infoStmt->execute([$id]);
             $info = $infoStmt->fetch(PDO::FETCH_ASSOC);
             
@@ -81,7 +81,7 @@ $edit_mode = false; $edit_record = null;
 if (isset($_GET['edit_id'])) {
     // Left Join time_logs to ensure we get data even if the log is missing
     $sql = "SELECT a.*, e.first_name, e.last_name, t.time_in, t.time_out 
-            FROM attendance a 
+            FROM attendance_logs a 
             JOIN employees e ON a.employee_id = e.employee_id 
             LEFT JOIN time_logs t ON a.attendance_id = t.attendance_id 
             WHERE a.attendance_id = ?";

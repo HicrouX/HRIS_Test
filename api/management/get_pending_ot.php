@@ -1,34 +1,24 @@
 <?php
-// api/management/get_pending_ot.php
 require_once '../config/db.php';
 require_once '../middleware/auth.php';
 
-// 1. Verify User is a Coach (Role 2)
-verifyAccess([2]);
+verifyAccess([2, 3, 4]);
+$acting_user_id = $_SESSION['user_id'];
 
-$coach_id = $_GET['user_id']; // Passed from React
+try {
+    $sql = "SELECT ot.*, e.first_name, e.last_name, e.position
+            FROM overtime_requests ot
+            JOIN employees e ON ot.employee_id = e.employee_id
+            JOIN cluster_members cm ON e.employee_id = cm.employee_id
+            JOIN clusters c ON cm.cluster_id = c.cluster_id
+            WHERE ot.status = 'Pending' 
+            AND c.user_id = ?
+            ORDER BY ot.created_at ASC";
 
-// 2. Fetch 'Pending' Overtime Requests for this Coach's Team
-$sql = "SELECT 
-            ot.ot_id, 
-            ot.ot_type, 
-            ot.start_time, 
-            ot.end_time, 
-            ot.purpose, 
-            ot.created_at,
-            e.first_name, 
-            e.last_name, 
-            e.position
-        FROM overtime_requests ot
-        JOIN employees e ON ot.employee_id = e.employee_id
-        JOIN team_members tm ON e.employee_id = tm.employee_id
-        JOIN team_cluster tc ON tm.team_id = tc.team_id
-        WHERE ot.status = 'Pending' 
-        AND tc.coach_id = ?
-        ORDER BY ot.start_time ASC";
-
-$stmt = $pdo->prepare($sql);
-$stmt->execute([$coach_id]);
-
-echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
-?>
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$acting_user_id]);
+    echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(["error" => $e->getMessage()]);
+}

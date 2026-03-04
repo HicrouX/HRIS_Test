@@ -7,7 +7,7 @@ header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') exit; 
 
 $host = "localhost";
-$db_name = "hris_db";
+$db_name = "official_hris_db";
 $username = "root";
 $password = "";
 

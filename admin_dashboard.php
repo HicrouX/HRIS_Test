@@ -15,7 +15,7 @@ if (!isset($_SESSION['role_id']) || ($_SESSION['role_id'] != 3 && $_SESSION['rol
     header("Location: login.php"); exit;
 }
 
-$api_base_url = "https://agriease.helioho.st/hris/api"; 
+$api_base_url = "http://localhost/hris_official/api"; 
 
 $user_id = $_SESSION['employee_id'];
 
@@ -30,12 +30,12 @@ try {
     }
 } catch (Exception $e) { /* Ignore */ }
 
-// Edit Attendance Logic (Existing PHP POST logic)
+// Edit Attendance Logic (Updating table name)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_status'])) {
     $id = $_POST['attendance_id'];
     $status = $_POST['status'];
     try {
-        $stmt = $pdo->prepare("UPDATE attendance SET attendance_status = ? WHERE attendance_id = ?");
+        $stmt = $pdo->prepare("UPDATE attendance_logs SET attendance_status = ? WHERE attendance_id = ?");
         $stmt->execute([$status, $id]);
         header("Location: admin_dashboard.php"); exit;
     } catch (Exception $e) { $error = $e->getMessage(); }
@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_status'])) {
 // Check for Edit Mode via GET
 $edit_mode = false; $edit_record = null;
 if (isset($_GET['edit_id'])) {
-    $stmt = $pdo->prepare("SELECT a.*, e.first_name, e.last_name FROM attendance a JOIN employees e ON a.employee_id = e.employee_id WHERE a.attendance_id = ?");
+    $stmt = $pdo->prepare("SELECT a.*, e.first_name, e.last_name FROM attendance_logs a JOIN employees e ON a.employee_id = e.employee_id WHERE a.attendance_id = ?");
     $stmt->execute([$_GET['edit_id']]);
     $edit_record = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($edit_record) $edit_mode = true;

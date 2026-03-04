@@ -3,33 +3,36 @@
 require_once '../config/db.php';
 require_once '../middleware/auth.php';
 
-verifyAccess([2]); // Coach Only
+// Allow Coach (2), Admin (3), Super Admin (4)
+verifyAccess([2, 3, 4]);
+
+// The 'acting coach' is the currently logged-in employee
+$acting_emp_id = $_SESSION['employee_id']; 
 
 $data = json_decode(file_get_contents("php://input"));
 
-if (empty($data->leave_id) || empty($data->coach_id)) {
+if (empty($data->leave_id)) {
     http_response_code(400);
-    echo json_encode(["error" => "Missing required IDs."]);
+    echo json_encode(["error" => "Missing Leave ID."]);
     exit;
 }
 
 try {
-    // FIX: Translate Coach Employee ID to User ID for 'reviewed_by' column
-    $findUser = $pdo->prepare("SELECT user_id FROM users WHERE employee_id = ?");
-    $findUser->execute([$data->coach_id]);
-    $userRow = $findUser->fetch();
+    // Update status to 'Endorsed' and record the reviewer ID
+    // We only update if the current status is 'Pending' to prevent double-processing
+    $stmt = $pdo->prepare("UPDATE leave_requests 
+                           SET status = 'Endorsed', reviewed_by = ? 
+                           WHERE leave_id = ? AND status = 'Pending'");
+    
+    $stmt->execute([$acting_emp_id, $data->leave_id]);
 
-    if (!$userRow) {
-        throw new Exception("Coach record not found.");
+    if ($stmt->rowCount() > 0) {
+        echo json_encode(["success" => "Leave endorsed and forwarded to Admin."]);
+    } else {
+        echo json_encode(["error" => "Request already processed or not found."]);
     }
-
-    // FIX: Strictly set status to 'Endorsed' to move it to the Admin queue
-    $stmt = $pdo->prepare("UPDATE leave_requests SET status = 'Endorsed', reviewed_by = ? WHERE leave_id = ? AND status = 'Pending'");
-    $stmt->execute([$userRow['user_id'], $data->leave_id]);
-
-    echo json_encode(["success" => "Leave endorsed and forwarded to Admin."]);
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(["error" => $e->getMessage()]);
+    echo json_encode(["error" => "Database error: " . $e->getMessage()]);
 }
 ?>

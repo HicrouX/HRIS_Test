@@ -1,87 +1,46 @@
 <?php
 // FILE: login.php
 session_start();
-
-/**
- * 2. Define Test Accounts (Organized by Strict Hierarchy)
- * Standardized passwords to 'pass123' for demo purposes.
- */
-$test_accounts = [
-    // --- SUPER ADMINISTRATOR (Role 4) ---
-    'super_admin' => [
-        'password' => 'pass123',
-        'role_id'  => 4,
-        'emp_id'   => 103,
-        'name'     => 'Super Admin'
-    ],
-
-    // --- ADMINISTRATORS (Role 3) ---
-    'admin2' => [
-        'password' => 'pass123',
-        'role_id'  => 3,
-        'emp_id'   => 104,
-        'name'     => 'Sarah Admin'
-    ],
-    'admin3' => [
-        'password' => 'pass123',
-        'role_id'  => 3,
-        'emp_id'   => 105,
-        'name'     => 'Bruce Admin'
-    ],
-
-    // --- COACHES (Role 2) ---
-    'coach_user' => [
-        'password' => 'pass123',
-        'role_id'  => 2,
-        'emp_id'   => 102,
-        'name'     => 'Charina Vargas'
-    ],
-    'coach_bravo' => [
-        'password' => 'pass123',
-        'role_id'  => 2,
-        'emp_id'   => 106,
-        'name'     => 'Bravo Coach'
-    ],
-    'coach_charlie' => [
-        'password' => 'pass123',
-        'role_id'  => 2,
-        'emp_id'   => 107,
-        'name'     => 'Charlie Coach'
-    ],
-
-    // --- EMPLOYEES (Role 1) ---
-    'employee_user' => [ 'password' => 'pass123', 'role_id' => 1, 'emp_id' => 101, 'name' => 'John Doe' ],
-    'alice'         => [ 'password' => 'pass123', 'role_id' => 1, 'emp_id' => 108, 'name' => 'Alice Wonder' ],
-    'bob'           => [ 'password' => 'pass123', 'role_id' => 1, 'emp_id' => 109, 'name' => 'Bob Builder' ]
-];
-
+require_once 'api/config/db.php';
+header("Content-Type: text/html; charset=UTF-8");
 $error = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = $_POST['username'] ?? '';
+    $email = $_POST['username'] ?? ''; 
     $password = $_POST['password'] ?? '';
 
-    if (isset($test_accounts[$username]) && $test_accounts[$username]['password'] === $password) {
-        $_SESSION['role_id'] = (int)$test_accounts[$username]['role_id'];
-        $_SESSION['employee_id'] = $test_accounts[$username]['emp_id'];
-        $_SESSION['user_name'] = $test_accounts[$username]['name'];
+    try {
+        // Query database to match sample_data.sql
+        $stmt = $pdo->prepare("SELECT u.user_id, u.role_id, u.password, e.employee_id, e.first_name, e.last_name 
+                               FROM users u 
+                               JOIN employees e ON u.user_id = e.user_id 
+                               WHERE u.email = ?");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        /**
-         * 4. FIXED REDIRECTION LOGIC
-         * Strict equality (===) ensures Role 3 never reaches the Super Admin Dashboard.
-         */
-        if ($_SESSION['role_id'] === 4) {
-            header("Location: super_admin_dashboard.php");
-        } elseif ($_SESSION['role_id'] === 3) {
-            header("Location: admin_dashboard.php");
-        } elseif ($_SESSION['role_id'] === 2) {
-            header("Location: coach_dashboard.php");
+        // Note: sample_data.sql uses plain text 'pass123'
+        if ($user && $user['password'] === $password) {
+            $_SESSION['user_id'] = (int)$user['user_id'];
+            $_SESSION['role_id'] = (int)$user['role_id'];
+            $_SESSION['employee_id'] = (int)$user['employee_id'];
+            $_SESSION['user_name'] = $user['first_name'] . ' ' . $user['last_name'];
+
+            // Redirection logic based on Role ID
+            if ($_SESSION['role_id'] === 4) {
+                header("Location: super_admin_dashboard.php");
+            } elseif ($_SESSION['role_id'] === 3) {
+                header("Location: admin_dashboard.php");
+            } elseif ($_SESSION['role_id'] === 2) {
+                header("Location: coach_dashboard.php");
+            } else {
+                header("Location: employee_dashboard.php");
+            }
+            exit;
         } else {
-            header("Location: employee_dashboard.php");
+            $error = "Invalid email or password!";
         }
-        exit;
-    } else {
-        $error = "Invalid username or password!";
+    } catch (Exception $e) {
+        $error = "Database error: " . $e->getMessage();
     }
 }
 ?>
@@ -99,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         button { width: 100%; padding: 14px; background: #1e4d8c; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 6px; font-size: 16px; transition: 0.3s; }
         button:hover { background: #153a6b; }
         .error-msg { color: #e74c3c; font-size: 14px; text-align: center; background: #fdedec; padding: 10px; border-radius: 6px; border: 1px solid #fadbd8; }
-        .test-hint { font-size: 11px; color: #777; margin-top: 25px; border-top: 1px solid #eee; padding-top: 15px; line-height: 1.6; max-height: 180px; overflow-y: auto; }
+        .test-hint { font-size: 11px; color: #777; margin-top: 25px; border-top: 1px solid #eee; padding-top: 15px; line-height: 1.6; max-height: 250px; overflow-y: auto; }
         code { background: #f4f4f4; padding: 2px 5px; border-radius: 4px; font-family: 'Courier New', monospace; color: #c0392b; font-weight: bold; }
         .role-group { margin-bottom: 12px; }
         .role-title { font-weight: bold; color: #2c3e50; display: block; margin-bottom: 4px; }
@@ -115,27 +74,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 
     <form method="POST">
-        <input type="text" name="username" placeholder="Username" required autocomplete="off">
+        <input type="text" name="username" placeholder="Email Address" required autocomplete="off">
         <input type="password" name="password" placeholder="Password" required>
         <button type="submit">Log In</button>
     </form>
 
     <div class="test-hint">
+        <div style="margin-bottom:10px; color:#1e4d8c; font-weight:bold;">Test Credentials (Pass: pass123)</div>
         <div class="role-group">
-            <span class="role-title">🔒 Super Admin (Pass: pass123)</span>
-            • <code>super_admin</code>
+            <span class="role-title">🔒 Super Admin</span>
+            • <code>super@hris.com</code>
         </div>
         <div class="role-group">
-            <span class="role-title">🛡️ Administrators (Pass: pass123)</span>
-            • <code>admin2</code> | <code>admin3</code>
+            <span class="role-title">🛡️ Admin</span>
+            • <code>admin@hris.com</code>
         </div>
         <div class="role-group">
-            <span class="role-title">📋 Coaches (Pass: pass123)</span>
-            • <code>coach_user</code> | <code>coach_bravo</code> | <code>coach_charlie</code>
+            <span class="role-title">📋 Coaches</span>
+            • <code>coach1@hris.com</code> | <code>coach2@hris.com</code>
         </div>
         <div class="role-group">
-            <span class="role-title">👤 Employees (Pass: pass123)</span>
-            • <code>employee_user</code> | <code>alice</code> | <code>bob</code>
+            <span class="role-title">👤 Employees</span>
+            • <code>emp1@hris.com</code> to <code>emp5@hris.com</code>
         </div>
     </div>
 </div>

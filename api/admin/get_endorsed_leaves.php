@@ -1,38 +1,26 @@
 <?php
-// api/admin/get_endorsed_leaves.php
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
-
 require_once '../config/db.php';
+require_once '../middleware/auth.php';
+
+verifyAccess([3, 4]); 
+$current_admin_emp_id = $_SESSION['employee_id'];
 
 try {
-    // 🚀 UPDATED: Fetch Leave Details + Endorser Name
-    $sql = "SELECT 
-                l.leave_id,
-                l.leave_type,
-                l.start_date,
-                l.end_date,
-                l.reason,
-                l.created_at,
-                e.first_name, 
-                e.last_name,
-                -- Get the name of the Coach who endorsed it (reviewed_by)
-                CONCAT(c_emp.first_name, ' ', c_emp.last_name) as endorser_name
-            FROM leave_requests l
-            JOIN employees e ON l.employee_id = e.employee_id
-            -- Link 'reviewed_by' (User ID) -> Users Table -> Employees Table (Coach)
-            LEFT JOIN users u ON l.reviewed_by = u.user_id
-            LEFT JOIN employees c_emp ON u.employee_id = c_emp.employee_id
-            WHERE l.status = 'Endorsed' 
-            ORDER BY l.created_at ASC";
+    $sql = "SELECT d.*, e.first_name, e.last_name, r.role_name
+            FROM attendance_disputes d
+            JOIN employees e ON d.employee_id = e.employee_id
+            JOIN users u ON e.employee_id = u.employee_id
+            JOIN roles r ON u.role_id = r.role_id
+            WHERE d.status IN ('Pending', 'Endorsed')
+            AND d.employee_id != ? 
+            ORDER BY d.created_at ASC";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute();
-    $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    echo json_encode($data);
-} catch (PDOException $e) {
-    http_response_code(500);
-    echo json_encode(["error" => $e->getMessage()]);
+    $stmt->execute([$current_admin_emp_id]);
+    echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+} catch (Exception $e) {
+    echo json_encode([]);
 }
 ?>

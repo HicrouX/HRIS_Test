@@ -10,9 +10,11 @@ require_once 'api/config/db.php';
 require_once 'api/middleware/auth.php';
 verifyAccess([2]); // Coach Access Only
 
-"https://agriease.helioho.st/hris/api"
+$api_base_url = "http://localhost/hris_official/api";
 
-$coach_id = $_SESSION['employee_id'];
+// FIXED: Ensure keys exist in session to prevent the "Undefined array key" warning
+$coach_id = isset($_SESSION['employee_id']) ? $_SESSION['employee_id'] : 0;
+$coach_user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
 
 // FETCH COACH NAME
 $coach_name = "Coach";
@@ -21,6 +23,20 @@ try {
     $stmt->execute([$coach_id]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($user) { $coach_name = $user['first_name'] . ' ' . $user['last_name']; }
+} catch (Exception $e) { /* Ignore */ }
+
+// VITAL LOGIC: AUTO-DETECT CLUSTER ONLY FOR THE LOGGED-IN COACH
+$my_cluster_id = 0;
+$my_cluster_name = "No Cluster Detected";
+try {
+    // Search clusters table where user_id matches the logged-in coach
+    $stmt = $pdo->prepare("SELECT cluster_id, name FROM clusters WHERE user_id = ? LIMIT 1");
+    $stmt->execute([$coach_user_id]);
+    $cluster_info = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($cluster_info) {
+        $my_cluster_id = $cluster_info['cluster_id'];
+        $my_cluster_name = $cluster_info['name'];
+    }
 } catch (Exception $e) { /* Ignore */ }
 ?>
 <!DOCTYPE html>
@@ -63,7 +79,6 @@ try {
         .status-Absent { background: #ffebee; color: #c62828; }
         .status-OnLeave { background: #e3f2fd; color: #1565c0; } 
         
-        /* MODAL STYLES */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: white; padding: 0; border-radius: 4px; width: 1000px; max-height: 90vh; display: flex; flex-direction: column; }
         .modal-header { background: #fff; padding: 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;}
@@ -88,7 +103,7 @@ try {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
         
         .search-box { padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; outline: none; margin-left: 10px; background: #fff; }
-        .export-btn { background: #27ae60; border: none; padding: 6px 12px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold; font-size: 12px; margin-left: 10px; }
+        .export-btn { display: none; } /* NO EXPORT FOR COACH */
         
         .date-filter-input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; color: #333; outline: none; background: white; }
 
@@ -104,7 +119,6 @@ try {
         .filter-tag span { cursor: pointer; font-weight: bold; color: #c62828; margin-left: 2px; }
         .clear-all-tag { background: #ffcdd2; color: #b71c1c; padding: 4px 8px; border-radius: 12px; font-size: 11px; display: flex; align-items: center; gap: 5px; border: 1px solid #ef9a9a; margin-top: 2px; cursor: pointer; font-weight: bold; }
 
-        /* ✅ Summary Stat Badges */
         .stats-container { display: flex; gap: 15px; padding: 15px 40px 0 40px; flex-wrap: wrap; }
         .stat-badge { padding: 10px 15px; border-radius: 8px; font-weight: bold; font-size: 12px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; }
         .badge-present { background: #e8f5e9; color: #2e7d32; border-color: #c8e6c9; }
@@ -116,6 +130,7 @@ try {
 <body>
     <input type="hidden" id="coach_id" value="<?php echo $coach_id; ?>">
     <input type="hidden" id="current_view_id" value="">
+    <input type="hidden" id="auto_cluster_id" value="<?php echo $my_cluster_id; ?>">
 
     <div class="sidebar">
         <div class="logo">iREPLY</div>
@@ -137,7 +152,7 @@ try {
             <div class="header">
                 <h2>👥 Team Members</h2>
                 <div style="display:flex; align-items:center;">
-                    <button class="export-btn" style="background:#f39c12;" onclick="loadAttendance()">Refresh</button>
+                    <button class="submit-btn" style="background:#f39c12; width: auto; padding: 6px 12px; margin-left: 10px;" onclick="loadAttendance()">Refresh</button>
                     <select id="teamStatusFilter" class="search-box" onchange="filterTeamTable()" style="width:150px;">
                         <option value="">Show All Statuses</option>
                         <option value="Present">Present</option>
@@ -169,7 +184,7 @@ try {
         <div id="manage-requests" class="view-content">
             <div class="header">
                 <h2>📋 Pending Team Requests</h2>
-                <button class="export-btn" style="background:#f39c12;" onclick="loadAllEndorsements()">Refresh </button>
+                <button class="submit-btn" style="background:#f39c12; width: auto; padding: 6px 12px;" onclick="loadAllEndorsements()">Refresh </button>
             </div>
             <div class="container">
                 <h3>Leaves (Endorsement Required)</h3>
@@ -244,15 +259,17 @@ try {
                 <div class="form-card" style="border-left: 5px solid #e74c3c;">
                     <h3 style="color: #e74c3c;">Attendance Dispute</h3>
                     <form id="disputeForm" class="form-grid" style="grid-template-columns: 1fr 1fr;">
-                        <input type="text" value="Self-Filing" class="readonly-field" readonly>
+                        <div style="grid-column: span 2;">
+                            <label style="font-size:12px; font-weight:bold;">Auto-Detected Cluster:</label>
+                            <input type="text" value="<?php echo htmlspecialchars($my_cluster_name); ?>" class="readonly-field" readonly>
+                        </div>
+                        
                         <select id="d_type" required onchange="toggleTimeInput(this.value)">
                             <option value="" disabled selected>Select Dispute Type</option>
                             <option>Forgot Time In/Out</option>
-                            <option>System Error</option>
                             <option>Official Business</option>
                             <option>Incorrect Status</option>
-                            <option>Breaktime</option>
-                            <option>Lunch Break</option>
+                            <option>System Error</option>
                         </select>
                         <div style="grid-column: span 2;"><label style="font-size:12px; font-weight:bold;">Date of Incident:</label><input type="date" id="d_date" required></div>
                         <div id="timeInputDiv" style="display:none; grid-column: span 2;">
@@ -269,7 +286,7 @@ try {
         </div>
 
         <div id="my-requests-view" class="view-content">
-            <div class="header" style="background: #8e44ad;"><h2>My Request Status</h2><button class="export-btn" style="background:#fff; color:#333;" onclick="loadMyRequests()">Refresh</button></div>
+            <div class="header" style="background: #8e44ad;"><h2>My Request Status</h2><button class="submit-btn" style="background:#fff; color:#333; width: auto; padding: 6px 12px;" onclick="loadMyRequests()">Refresh</button></div>
             <div class="container">
                 <h3 style="color:#666;">Leave Requests</h3><table id="myLeaveTable"><thead><tr onclick="sortTable('myLeaveTable', 0)"><th>Type ⬍</th><th>Date Range ⬍</th><th>Reason</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Approver</th></tr></thead><tbody id="myLeaveLogs"></tbody></table>
                 <h3 style="color:#666; margin-top:20px;">Overtime Requests</h3><table id="myOTTable"><thead><tr onclick="sortTable('myOTTable', 0)"><th>Type ⬍</th><th>Time Range ⬍</th><th>Purpose</th><th>Status ⬍</th><th>Filed On ⬍</th><th>Approver</th></tr></thead><tbody id="myOTLogs"></tbody></table>
@@ -280,7 +297,6 @@ try {
         <div id="my-attendance" class="view-content">
             <div class="header">
                 <div style="display:flex; align-items:center; gap:10px;"><h2 style="margin:0;">Attendance History</h2></div>
-                
                 <div style="background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 15px; font-size: 13px; font-weight: bold; color: white;">
                     Total Hours: <span id="totalHoursSum">0.00</span>
                 </div>
@@ -289,7 +305,6 @@ try {
                     <input type="date" id="range_end" class="search-box" style="width:130px; margin-left:5px;" onchange="loadMyAttendance()">
                 </div>
             </div>
-            
             <div class="stats-container">
                 <div class="stat-badge badge-present">Present: <span id="countPresent" style="font-size:16px;">0</span></div>
                 <div class="stat-badge badge-absent">Absent: <span id="countAbsent" style="font-size:16px;">0</span></div>
@@ -310,7 +325,6 @@ try {
                         <option value="Undertime">Undertime</option>
                         <option value="Duty on Rest Day">Duty on Rest Day</option>
                     </select>
-                    <button class="export-btn" onclick="exportIndividualExcel(COACH_ID, 'my')">📂 Export My Logs</button>
                 </div>
                 <table id="myAttTable">
                     <thead><tr onclick="sortTable('myAttTable', 0)"><th>Date ⬍</th><th>In</th><th>Out</th><th>Break In</th><th>Break Out</th><th>Status ⬍</th><th>Hrs ⬍</th></tr></thead>
@@ -326,7 +340,6 @@ try {
                 <div class="modal-title">Resolve Dispute (Immediate)</div>
                 <span class="close-x" onclick="closeDisputeModal()">×</span>
             </div>
-            
             <div id="disputeModalContent" style="padding:15px; font-size:13px; background:#f9f9f9; border-radius:6px; margin:10px 0;"></div>
             
             <label style="display:block; margin-bottom:5px; font-weight:bold;">Action:</label>
@@ -361,13 +374,12 @@ try {
             </div>
         </div>
     </div>
-    
+
     <div id="historyModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <div class="modal-title" id="modalTitle">Employee History</div>
                 <div style="display:flex; align-items:center; gap:15px;">
-                    <button class="export-btn" onclick="exportIndividualExcel(document.getElementById('current_view_id').value, 'modal')">📂 Export</button>
                     <span class="close-btn" onclick="closeModal()">×</span>
                 </div>
             </div>
@@ -433,7 +445,7 @@ try {
 
         function toggleTimeInput(val) { document.getElementById('timeInputDiv').style.display = val.includes('Forgot') ? 'block' : 'none'; }
 
-        // ✅ NEW: CALCULATE HOURS & SUMMARY STATISTICS
+        // ✅ CALCULATE HOURS & SUMMARY STATISTICS
         function updateTableSummaries(tid) {
             let sum = 0;
             let counts = { present: 0, absent: 0, late: 0, leave: 0 };
@@ -441,7 +453,6 @@ try {
             const rows = Array.from(document.getElementById(tid).tBodies[0].rows);
             rows.forEach(r => {
                 if (r.style.display !== 'none' && r.cells.length > 1) { 
-                    // Read the last column for hours, second to last for status
                     let val = parseFloat(r.cells[r.cells.length - 1].innerText);
                     if (!isNaN(val)) sum += val;
                     
@@ -499,31 +510,17 @@ try {
             if (tid === 'myAttTable') updateTableSummaries(tid);
         }
 
-        // --- EXPORT FUNCTION ---
-        function exportIndividualExcel(targetId, context = 'my') { 
-            if(!targetId) return;
-            let s = '', e = '';
-            if(context === 'modal') {
-                s = document.getElementById('hist_modal_start') ? document.getElementById('hist_modal_start').value : '';
-                e = document.getElementById('hist_modal_end') ? document.getElementById('hist_modal_end').value : '';
-            } else {
-                s = document.getElementById('range_start') ? document.getElementById('range_start').value : '';
-                e = document.getElementById('range_end') ? document.getElementById('range_end').value : '';
-            }
-            window.location.href = `${API}/export/export_excel.php?mode=INDIVIDUAL&employee_id=${targetId}&start_date=${s}&end_date=${e}`; 
-        }
-
         async function loadAttendance() {
             const res = await fetch(`${API}/management/get_team_attendance.php?coach_id=${COACH_ID}`);
             const data = await res.json();
             document.getElementById('attendanceLogs').innerHTML = data.length ? data.map(log => `
                 <tr>
                     <td style="padding:15px;"><span class="clickable-name" onclick="viewMemberHistory(${log.employee_id}, '${log.first_name} ${log.last_name}')">${log.first_name} ${log.last_name}</span></td>
-                    <td>${log.latest_date||'-'}</td>
+                    <td>${log.attendance_date||'-'}</td>
                     <td>${log.time_in||'-'}</td>
                     <td>${log.time_out||'-'}</td>
-                    <td><span class="status-pill status-${(log.latest_status||'').replace(/\s/g,'')}">${log.latest_status||'-'}</span></td>
-                    <td><span class="action-icon" style="color:#3498db;" onclick="viewMemberHistory(${log.employee_id}, '${log.first_name}')">👁️</span></td>
+                    <td><span class="status-pill status-${(log.attendance_status||'').replace(/\s/g,'')}">${log.attendance_status||'-'}</span></td>
+                    <td><span class="action-icon" style="color:#3498db;" onclick="viewMemberHistory(${log.employee_id}, '${log.first_name} ${log.last_name}')">👁️</span></td>
                 </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;">No records found.</td></tr>';
         }
 
@@ -535,17 +532,16 @@ try {
             const leaves = data.filter(item => item.type === 'Leave');
             const overtime = data.filter(item => item.type === 'Overtime');
             const disputes = data.filter(item => item.type === 'Dispute');
-            const getApprover = (item) => item.admin_first ? `<span style="color:#27ae60; font-weight:600;">${item.admin_first} ${item.admin_last}</span>` : '<span style="color:#ccc;">-</span>';
             
-            document.getElementById("myLeaveLogs").innerHTML = leaves.length ? leaves.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}<br>${i.end_date}</td><td>${i.reason}</td><td><span class="status-pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td><td>${getApprover(i)}</td></tr>`).join('') : '<tr><td colspan="6" style="text-align:center;">No records</td></tr>';
-            document.getElementById("myOTLogs").innerHTML = overtime.length ? overtime.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}<br>${i.end_date}</td><td>${i.reason}</td><td><span class="status-pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td><td>${getApprover(i)}</td></tr>`).join('') : '<tr><td colspan="6" style="text-align:center;">No records</td></tr>';
+            document.getElementById("myLeaveLogs").innerHTML = leaves.length ? leaves.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}<br>${i.end_date}</td><td>${i.reason}</td><td><span class="status-pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td><td>${i.approver || '-'}</td></tr>`).join('') : '<tr><td colspan="6" style="text-align:center;">No records</td></tr>';
+            document.getElementById("myOTLogs").innerHTML = overtime.length ? overtime.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}<br>${i.end_date}</td><td>${i.reason}</td><td><span class="status-pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td><td>${i.approver || '-'}</td></tr>`).join('') : '<tr><td colspan="6" style="text-align:center;">No records</td></tr>';
             document.getElementById("myDisputeLogs").innerHTML = disputes.length ? disputes.map(i => `<tr><td>${i.sub_type}</td><td>${i.start_date}</td><td>${i.reason}</td><td><span class="status-pill status-${i.status}">${i.status}</span></td><td>${i.created_at}</td><td style="color:blue; font-style:italic;">${i.remarks || '--'}</td></tr>`).join('') : '<tr><td colspan="6" style="text-align:center;">No records</td></tr>';
         }
 
         function loadAllEndorsements() { loadLeaves(); loadOT(); loadDisputes(); }
 
-        async function loadLeaves() { const res = await fetch(`${API}/management/get_pending_leaves.php?user_id=${COACH_ID}`); const data = await res.json(); document.getElementById('coachLeaveList').innerHTML = data.length ? data.map(item => `<tr><td><strong>${item.first_name} ${item.last_name}</strong></td><td>"${item.reason}"</td><td><span class="action-icon" style="color:green;" onclick="endorse(${item.leave_id}, 'leave', 'ENDORSE')">✔</span> <span class="action-icon" style="color:red;" onclick="endorse(${item.leave_id}, 'leave', 'DENY')">❌</span></td></tr>`).join('') : '<tr><td colspan="3" style="text-align:center;">No pending leaves.</td></tr>'; }
-        async function loadOT() { const res = await fetch(`${API}/management/get_pending_ot.php?user_id=${COACH_ID}`); const data = await res.json(); document.getElementById('coachOTList').innerHTML = data.length ? data.map(item => `<tr><td><strong>${item.first_name} ${item.last_name}</strong></td><td>"${item.purpose}"</td><td><span class="action-icon" style="color:green;" onclick="endorse(${item.ot_id}, 'ot', 'ENDORSE')">✔</span> <span class="action-icon" style="color:red;" onclick="endorse(${item.ot_id}, 'ot', 'DENY')">❌</span></td></tr>`).join('') : '<tr><td colspan="3" style="text-align:center;">No pending overtime.</td></tr>'; }
+        async function loadLeaves() { const res = await fetch(`${API}/management/get_pending_leaves.php?user_id=${COACH_ID}`); const data = await res.json(); document.getElementById('coachLeaveList').innerHTML = data.length ? data.map(item => `<tr><td><strong>${item.first_name} ${item.last_name}</strong></td><td>"${item.reason}"</td><td><span class="action-icon" style="color:green;" onclick="endorse(${item.leave_id}, 'leave', 'ENDORSE')">✔</span></td></tr>`).join('') : '<tr><td colspan="3" style="text-align:center;">No pending leaves.</td></tr>'; }
+        async function loadOT() { const res = await fetch(`${API}/management/get_pending_ot.php?user_id=${COACH_ID}`); const data = await res.json(); document.getElementById('coachOTList').innerHTML = data.length ? data.map(item => `<tr><td><strong>${item.first_name} ${item.last_name}</strong></td><td>"${item.purpose}"</td><td><span class="action-icon" style="color:green;" onclick="endorse(${item.ot_id}, 'ot', 'ENDORSE')">✔</span></td></tr>`).join('') : '<tr><td colspan="3" style="text-align:center;">No pending overtime.</td></tr>'; }
         
         async function loadDisputes() { 
             const res = await fetch(`${API}/management/get_pending_disputes.php?coach_id=${COACH_ID}`); 
@@ -566,8 +562,6 @@ try {
         function openDisputeModal(id, name, date) { 
             document.getElementById('currentDisputeId').value = id; 
             document.getElementById('disputeModalContent').innerText = `Resolving for: ${name} on ${date}`; 
-            document.getElementById('disputeAction').value = "APPROVE";
-            toggleDisputeFields();
             document.getElementById('disputeModal').style.display = 'flex'; 
         }
 
@@ -584,7 +578,6 @@ try {
             const rem = document.getElementById('actionRemarks').value; 
             
             let payload = { dispute_id: id, action: action, remarks: rem };
-
             if (action === 'APPROVE') {
                 payload.new_status = document.getElementById('newDisputeStatus').value;
                 payload.time_in = document.getElementById('finalTimeIn').value;
@@ -592,124 +585,64 @@ try {
             }
             
             await fetch(`${API}/management/resolve_dispute.php`, { method: 'POST', body: JSON.stringify(payload) }); 
-            closeDisputeModal(); 
-            loadDisputes(); 
+            closeDisputeModal(); loadDisputes(); 
         }
         
-        async function endorse(id, type, act) { if(!confirm(act + "?")) return; let endpoint = type === 'leave' ? '/management/endorse_leave.php' : '/management/endorse_overtime.php'; await fetch(`${API}${endpoint}`, { method: 'POST', body: JSON.stringify({ [type === 'leave' ? 'leave_id' : 'ot_id']: id, coach_id: COACH_ID, action: act }) }); if (type === 'leave') loadLeaves(); if (type === 'ot') loadOT(); }
+        async function endorse(id, type, act) { 
+            let endpoint = type === 'leave' ? '/management/endorse_leave.php' : '/management/endorse_overtime.php'; 
+            await fetch(`${API}${endpoint}`, { method: 'POST', body: JSON.stringify({ [type === 'leave' ? 'leave_id' : 'ot_id']: id, action: act, coach_id: COACH_ID }) }); 
+            loadAllEndorsements();
+        }
         
-        // ✅ SUBMIT WITH CHECKBOXES
         async function submitRequest(type) { 
             let endpoint, payload, formId; 
-            
             if (type === 'leave') { 
-                const agree1 = document.getElementById('l_agree1').checked ? 1 : 0;
-                const agree2 = document.getElementById('l_agree2').checked ? 1 : 0;
-                if (!agree1 || !agree2) { alert("⚠️ You must check both agreement boxes before submitting."); return; }
-
+                if (!document.getElementById('l_agree1').checked || !document.getElementById('l_agree2').checked) { alert("⚠️ Agree to terms."); return; }
                 endpoint = '/users/file_leave.php'; formId = 'leaveForm'; 
-                payload = { employee_id: COACH_ID, leave_type: document.getElementById('l_type').value, start_date: document.getElementById('l_start').value, end_date: document.getElementById('l_end').value, reason: document.getElementById('l_reason').value, agreement_1: agree1, agreement_2: agree2 }; 
-            
+                payload = { leave_type: document.getElementById('l_type').value, start_date: document.getElementById('l_start').value, end_date: document.getElementById('l_end').value, reason: document.getElementById('l_reason').value, employee_id: COACH_ID }; 
             } else if (type === 'ot') { 
-                const agree1 = document.getElementById('ot_agree1').checked ? 1 : 0;
-                const agree2 = document.getElementById('ot_agree2').checked ? 1 : 0;
-                if (!agree1 || !agree2) { alert("⚠️ You must check both agreement boxes before submitting."); return; }
-
-                const s = new Date(document.getElementById('ot_start').value), e = new Date(document.getElementById('ot_end').value); 
-                if ((e - s) / 36e5 > 2) { alert("Max 2 hrs"); return; } 
-
+                if (!document.getElementById('ot_agree1').checked || !document.getElementById('ot_agree2').checked) { alert("⚠️ Agree to terms."); return; }
                 endpoint = '/users/file_overtime.php'; formId = 'otForm';
-                payload = { employee_id: COACH_ID, ot_type: document.getElementById('ot_type').value, start_time: document.getElementById('ot_start').value, end_time: document.getElementById('ot_end').value, purpose: document.getElementById('ot_purpose').value, agreement_1: agree1, agreement_2: agree2 }; 
-            
+                payload = { ot_type: document.getElementById('ot_type').value, start_time: document.getElementById('ot_start').value, end_time: document.getElementById('ot_end').value, purpose: document.getElementById('ot_purpose').value, employee_id: COACH_ID }; 
             } else if (type === 'dispute') { 
-                endpoint = '/users/file_dispute.php'; formId = 'disputeForm';
-                let r = document.getElementById('d_reason').value; 
-                if(document.getElementById('d_type').value.includes('Forgot')) {
-                    r += " [Proposed In: "+document.getElementById('d_time_in').value+", Proposed Out: "+document.getElementById('d_time_out').value+"]"; 
-                }
-                payload = { employee_id: COACH_ID, date: document.getElementById('d_date').value, dispute_type: document.getElementById('d_type').value, reason: r }; 
+                endpoint = '/users/submit_dispute.php'; formId = 'disputeForm';
+                payload = { cluster_id: document.getElementById('auto_cluster_id').value, dispute_date: document.getElementById('d_date').value, dispute_type: document.getElementById('d_type').value, reason: document.getElementById('d_reason').value, time_in: document.getElementById('d_time_in').value, time_out: document.getElementById('d_time_out').value, employee_id: COACH_ID }; 
             } 
-            
-            try {
-                const res = await fetch(`${API}${endpoint}`, { method:'POST', body:JSON.stringify(payload) }); 
-                const r = await res.json(); alert(r.success||r.error); 
-                if(r.success) { document.getElementById(formId).reset(); loadMyRequests(); } 
-            } catch (err) { alert("Submission failed."); }
+            const res = await fetch(`${API}${endpoint}`, { method:'POST', body:JSON.stringify(payload) }); 
+            const r = await res.json(); alert(r.success||r.error); 
+            if(r.success) { document.getElementById(formId).reset(); loadMyRequests(); } 
         }
         
         async function loadMyAttendance() { 
-            const startInput = document.getElementById('range_start').value;
-            const endInput = document.getElementById('range_end').value;
-            
-            const r = await fetch(`${API}/users/get_my_attendance.php?employee_id=${COACH_ID}&start_date=${startInput}&end_date=${endInput}`); 
+            const s = document.getElementById('range_start').value, e = document.getElementById('range_end').value;
+            const r = await fetch(`${API}/users/get_member_attendance.php?employee_id=${COACH_ID}&start_date=${s}&end_date=${e}`); 
             const d = await r.json(); 
-            
-            document.getElementById('myAttendanceBody').innerHTML = d.length ? d.map(x => `<tr><td>${x.date}</td><td>${x.time_in||'--:--'}</td><td>${x.time_out||'--:--'}</td><td>${x.break_in||'--:--'}</td><td>${x.break_out||'--:--'}</td><td><span class="status-pill status-${(x.status||'').replace(/\s/g,'')}">${x.status}</span></td><td>${x.total_hours||'0.00'}</td></tr>`).join('') : '<tr><td colspan="7" style="text-align:center;">No records</td></tr>'; 
-            
+            document.getElementById('myAttendanceBody').innerHTML = d.length ? d.map(x => `<tr><td>${x.date}</td><td>${x.time_in||'--'}</td><td>${x.time_out||'--'}</td><td>${x.break_in||'--'}</td><td>${x.break_out||'--'}</td><td><span class="status-pill status-${(x.status||'').replace(/\s/g,'')}">${x.status}</span></td><td>${x.total_hours||'0.00'}</td></tr>`).join('') : '<tr><td colspan="7">No records</td></tr>'; 
             updateTableSummaries('myAttTable');
         }
 
-        // --- HISTORY FILTER LOGIC ---
         async function viewMemberHistory(empId, name) {
             document.getElementById('modalTitle').innerText = `${name} - History`;
             document.getElementById('current_view_id').value = empId; 
-            const d = new Date(), s = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0], e = d.toISOString().split('T')[0];
-            document.getElementById('hist_modal_start').value = s; document.getElementById('hist_modal_end').value = e;
-            document.querySelectorAll('.hist-status-cb').forEach(cb => cb.checked = false); 
-            document.getElementById('historyFilterMenu').style.display = 'none';
-            document.getElementById('activeHistoryFilters').innerHTML = ''; 
-            filterMemberHistory();
             document.getElementById('historyModal').style.display = 'flex';
-        }
-
-        function toggleHistoryFilterMenu() { const menu = document.getElementById('historyFilterMenu'); menu.style.display = menu.style.display === 'block' ? 'none' : 'block'; }
-        
-        function applyHistoryFilters() {
-            const checkedBoxes = document.querySelectorAll('.hist-status-cb:checked');
-            const selectedStatuses = Array.from(checkedBoxes).map(cb => cb.value.trim());
-            const tagsContainer = document.getElementById('activeHistoryFilters');
-            tagsContainer.innerHTML = '';
-            
-            selectedStatuses.forEach(status => {
-                tagsContainer.innerHTML += `<div class="filter-tag">${status} <span onclick="removeHistoryFilter('${status}')">✖</span></div>`;
-            });
-            if (selectedStatuses.length > 0) {
-                tagsContainer.innerHTML += `<div class="clear-all-tag" onclick="clearHistoryFilters()">Clear All ✖</div>`;
-            }
-            filterMemberHistory(); 
+            filterMemberHistory();
         }
 
         async function filterMemberHistory() {
             const empId = document.getElementById('current_view_id').value;
-            const start = document.getElementById('hist_modal_start').value;
-            const end = document.getElementById('hist_modal_end').value;
-            const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${empId}&start_date=${start}&end_date=${end}`);
+            const res = await fetch(`${API}/users/get_member_attendance.php?employee_id=${empId}`);
             const data = await res.json();
-            
-            const checkedBoxes = document.querySelectorAll('.hist-status-cb:checked');
-            const selectedStatuses = Array.from(checkedBoxes).map(cb => cb.value.trim());
-            
-            let total = 0;
-            const filteredData = data.filter(row => selectedStatuses.length === 0 || selectedStatuses.includes(row.status));
-
-            document.getElementById('modalHistoryBody').innerHTML = filteredData.length ? filteredData.map(row => {
-                total += parseFloat(row.total_hours || 0);
-                return `<tr><td>${row.date}</td><td><span class="status-pill status-${(row.status||'').replace(/\s/g,'')}">${row.status}</span></td><td>${row.time_in||'--:--'}</td><td>${row.time_out||'--:--'}</td><td>${row.break_in||'--:--'}</td><td>${row.break_out||'--:--'}</td><td>${row.lunch_break||'0'}</td><td>${row.total_hours||'0.00'}</td></tr>`;
-            }).join('') : '<tr><td colspan="8" style="text-align:center">No records</td></tr>';
-            document.getElementById('totalHoursDisplay').innerText = total.toFixed(2);
+            document.getElementById('modalHistoryBody').innerHTML = data.map(row => `<tr><td>${row.date}</td><td><span class="status-pill status-${(row.status||'').replace(/\s/g,'')}">${row.status}</span></td><td>${row.time_in}</td><td>${row.time_out}</td><td>${row.break_in}</td><td>${row.break_out}</td><td>${row.lunch_break}</td><td>${row.total_hours}</td></tr>`).join('');
         }
 
-        function removeHistoryFilter(val) { const cb = Array.from(document.querySelectorAll('.hist-status-cb')).find(c => c.value === val); if(cb) { cb.checked = false; applyHistoryFilters(); } }
-        function clearHistoryFilters() { document.querySelectorAll('.hist-status-cb').forEach(cb => cb.checked = false); applyHistoryFilters(); }
-        
-        window.onclick = function(e) { if (!e.target.closest('.history-filter-container')) { const menu = document.getElementById('historyFilterMenu'); if(menu && menu.style.display === 'block') menu.style.display = 'none'; } }
+        function toggleHistoryFilterMenu() { const menu = document.getElementById('historyFilterMenu'); menu.style.display = menu.style.display === 'block' ? 'none' : 'block'; }
         function closeModal() { document.getElementById('historyModal').style.display = 'none'; }
+        function applyHistoryFilters() { filterMemberHistory(); }
 
         window.onload = function() {
             const d = new Date(), s = new Date(d.getFullYear(), 0, 1).toISOString().split('T')[0], e = d.toISOString().split('T')[0];
             document.getElementById('range_start').value=s; document.getElementById('range_end').value=e; 
             loadAttendance();
-            loadMyAttendance();
         };
     </script>
 </body>

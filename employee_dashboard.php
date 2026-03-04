@@ -16,7 +16,7 @@ if ($_SESSION['role_id'] >= 3) { header("Location: admin_dashboard.php"); exit; 
 
 verifyAccess([1]); 
 
-$api_base_url = "https://agriease.helioho.st/hris/api"; 
+$api_base_url = "http://localhost/hris_official/api"; 
 
 $emp_id = $_SESSION['employee_id'];
 
@@ -28,6 +28,26 @@ try {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($user) {
         $emp_name = $user['first_name'] . ' ' . $user['last_name'];
+    }
+} catch (Exception $e) { /* Ignore */ }
+
+// ✅ FIXED: AUTO-DETECT CLUSTER & COACH FOR DISPUTE FORM
+$detected_cluster_name = "Not Assigned";
+$detected_coach_name = "No Coach";
+$detected_cluster_id = 0;
+try {
+    $sql = "SELECT c.cluster_id, c.name as cluster_name, coach_e.first_name, coach_e.last_name
+            FROM cluster_members cm
+            JOIN clusters c ON cm.cluster_id = c.cluster_id
+            JOIN employees coach_e ON c.user_id = coach_e.user_id
+            WHERE cm.employee_id = ? LIMIT 1";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$emp_id]);
+    $info = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($info) {
+        $detected_cluster_id = $info['cluster_id'];
+        $detected_cluster_name = $info['cluster_name'];
+        $detected_coach_name = $info['first_name'] . ' ' . $info['last_name'];
     }
 } catch (Exception $e) { /* Ignore */ }
 ?>
@@ -243,8 +263,9 @@ try {
                 <div class="form-card" style="border-left-color: #e74c3c; grid-column: span 2;">
                     <h3 style="margin-top:0; color: #e74c3c;">Attendance Dispute</h3>
                     <form id="disputeForm" class="form-grid" style="grid-template-columns: 1fr 1fr;">
-                        <input type="text" value="Cluster: Auto-Detected" class="readonly-field" readonly>
-                        <input type="text" value="Coach: Auto-Detected" class="readonly-field" readonly>
+                        <input type="text" value="Cluster: <?php echo htmlspecialchars($detected_cluster_name); ?>" class="readonly-field" readonly>
+                        <input type="text" value="Coach: <?php echo htmlspecialchars($detected_coach_name); ?>" class="readonly-field" readonly>
+                        
                         <select id="d_type" required onchange="toggleTimeInput(this.value)">
                             <option value="" disabled selected>Select Dispute Type</option>
                             <option>Forgot Time In/Out</option>
@@ -262,6 +283,9 @@ try {
                             </div>
                         </div>
                         <textarea id="d_reason" placeholder="Explain the discrepancy..." rows="3" required style="grid-column: span 2;"></textarea>
+                        
+                        <input type="hidden" id="d_cluster_id" value="<?php echo $detected_cluster_id; ?>">
+                        
                         <button type="button" class="submit-btn" style="background: #e74c3c; grid-column: span 2;" onclick="submitRequest('dispute')">Submit Dispute</button>
                     </form>
                 </div>
@@ -284,19 +308,16 @@ try {
 
         function toggleTimeInput(val) { document.getElementById('timeInputDiv').style.display = val.includes('Forgot') ? 'block' : 'none'; }
 
-        // ✅ NEW: CALCULATE HOURS & SUMMARY STATISTICS
         function updateTableSummaries(tid) {
             let sum = 0;
             let counts = { present: 0, absent: 0, late: 0, leave: 0 };
             
             const rows = Array.from(document.getElementById(tid).tBodies[0].rows);
             rows.forEach(r => {
-                if (r.style.display !== 'none' && r.cells.length > 1) { // Skip empty state rows
-                    // Add to total hours
+                if (r.style.display !== 'none' && r.cells.length > 1) { 
                     let val = parseFloat(r.cells[7].innerText);
                     if (!isNaN(val)) sum += val;
                     
-                    // Increment Summary Counters based on Status Column
                     let status = r.cells[6].innerText.toLowerCase();
                     if (status.includes('present')) counts.present++;
                     else if (status.includes('absent')) counts.absent++;
@@ -305,7 +326,6 @@ try {
                 }
             });
             
-            // Update UI
             document.getElementById('totalHoursSum').innerText = sum.toFixed(2);
             document.getElementById('countPresent').innerText = counts.present;
             document.getElementById('countAbsent').innerText = counts.absent;
@@ -319,7 +339,7 @@ try {
             Array.from(rows).forEach(r => {
                 r.style.display = r.innerText.toLowerCase().includes(filter) ? '' : 'none';
             });
-            updateTableSummaries(tid); // Trigger stat recalculation on filter
+            updateTableSummaries(tid); 
         }
 
         function sortTable(tid, n) {
@@ -340,7 +360,7 @@ try {
                 const res = await fetch(`${API}/users/get_my_attendance.php?employee_id=${EMP_ID}&start_date=${start}&end_date=${end}`);
                 const data = await res.json();
                 document.getElementById("attendanceLogs").innerHTML = data.length ? data.map(row => `<tr><td>${row.date}</td><td>${row.time_in||'--:--'}</td><td>${row.time_out||'--:--'}</td><td>${row.break_in||'--:--'}</td><td>${row.break_out||'--:--'}</td><td>${row.lunch_break||'0'}</td><td><span class="status-pill status-${(row.status||'').replace(/\s/g,'')}">${row.status}</span></td><td>${row.total_hours||'0'}</td></tr>`).join('') : '<tr><td colspan="8" style="text-align:center">No records found.</td></tr>';
-                updateTableSummaries('attTable'); // Calculate stats after loading data
+                updateTableSummaries('attTable'); 
             } catch (err) {
                 console.error("Attendance Error:", err);
             }
@@ -438,7 +458,14 @@ try {
                 if(document.getElementById('d_type').value.includes('Forgot')) {
                     reason += " [Proposed In: "+document.getElementById('d_time_in').value+", Proposed Out: "+document.getElementById('d_time_out').value+"]";
                 }
-                payload = { employee_id: EMP_ID, date: document.getElementById('d_date').value, dispute_type: document.getElementById('d_type').value, reason: reason };
+                // ✅ ADDED: CLUSTER ID TO PAYLOAD
+                payload = { 
+                    employee_id: EMP_ID, 
+                    cluster_id: document.getElementById('d_cluster_id').value, 
+                    date: document.getElementById('d_date').value, 
+                    dispute_type: document.getElementById('d_type').value, 
+                    reason: reason 
+                };
             }
 
             try {

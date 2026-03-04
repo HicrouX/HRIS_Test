@@ -6,6 +6,7 @@ header("Content-Type: application/json; charset=UTF-8");
 require_once '../config/db.php';
 require_once '../middleware/auth.php';
 
+// Restricted to Admin (3) and Super Admin (4)
 verifyAccess([3, 4]);
 
 $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-01');
@@ -54,13 +55,13 @@ try {
 
     $sql .= " UNION ALL ";
 
-    // 3. DISPUTE QUERY (New)
+    // 3. DISPUTE QUERY
     $sql .= "SELECT 
                 d.dispute_id as id,
                 'Dispute' as category,
                 d.dispute_type as type,
                 d.dispute_date as date_start,
-                d.dispute_date as date_end, -- Same day
+                d.dispute_date as date_end,
                 d.reason as details,
                 d.status,
                 d.created_at,
@@ -81,6 +82,6 @@ try {
 
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(["error" => $e->getMessage()]);
+    echo json_encode(["error" => "History Retrieval Failed: " . $e->getMessage()]);
 }
 ?>
