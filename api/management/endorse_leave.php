@@ -8,6 +8,7 @@ verifyAccess([2, 3, 4]);
 
 // The 'acting coach' is the currently logged-in user
 $acting_user_id = $_SESSION['user_id']; 
+$acting_role_id = $_SESSION['role_id'];
 
 $data = json_decode(file_get_contents("php://input"));
 
@@ -18,6 +19,27 @@ if (empty($data->leave_id)) {
 }
 
 try {
+    // Check the role of the requester
+    $stmt = $pdo->prepare("SELECT u.role_id FROM leave_requests lr
+                           JOIN employees e ON lr.employee_id = e.employee_id
+                           JOIN users u ON e.user_id = u.user_id
+                           WHERE lr.leave_id = ?");
+    $stmt->execute([$data->leave_id]);
+    $requester = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$requester) {
+        http_response_code(404);
+        echo json_encode(["error" => "Leave request not found."]);
+        exit;
+    }
+
+    // If requester is a Coach (role 2) and acting user is also a Coach (role 2)
+    if ($requester['role_id'] == 2 && $acting_role_id == 2) {
+        http_response_code(403);
+        echo json_encode(["error" => "Coaches cannot endorse other coaches' requests. Only Admins can do this."]);
+        exit;
+    }
+
     // Update status to 'Endorsed' and record the reviewer ID
     // We only update if the current status is 'Pending' to prevent double-processing
     $stmt = $pdo->prepare("UPDATE leave_requests 

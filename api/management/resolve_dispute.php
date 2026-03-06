@@ -6,10 +6,39 @@ require_once '../middleware/auth.php';
 
 verifyAccess([2, 3, 4]); 
 $data = json_decode(file_get_contents("php://input"));
+$acting_user_id = $_SESSION['user_id'];
+$acting_role_id = $_SESSION['role_id'];
 
-$status = ($data->action === 'APPROVE') ? 'Approved' : 'Denied';
+if (empty($data->dispute_id)) {
+    http_response_code(400);
+    echo json_encode(["error" => "Missing Dispute ID."]);
+    exit;
+}
 
 try {
+    // Check the role of the requester
+    $stmt = $pdo->prepare("SELECT u.role_id FROM attendance_disputes ad
+                           JOIN employees e ON ad.employee_id = e.employee_id
+                           JOIN users u ON e.user_id = u.user_id
+                           WHERE ad.dispute_id = ?");
+    $stmt->execute([$data->dispute_id]);
+    $requester = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$requester) {
+        http_response_code(404);
+        echo json_encode(["error" => "Dispute not found."]);
+        exit;
+    }
+
+    // If requester is a Coach (role 2) and acting user is also a Coach (role 2)
+    if ($requester['role_id'] == 2 && $acting_role_id == 2) {
+        http_response_code(403);
+        echo json_encode(["error" => "Coaches cannot resolve other coaches' requests. Only Admins can do this."]);
+        exit;
+    }
+
+    $status = ($data->action === 'APPROVE') ? 'Approved' : 'Denied';
+
     $pdo->beginTransaction();
 
     $stmt = $pdo->prepare("UPDATE attendance_disputes SET status = ?, remarks = ? WHERE dispute_id = ?");

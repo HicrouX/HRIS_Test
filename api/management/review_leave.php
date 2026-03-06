@@ -8,8 +8,36 @@ verifyAccess([2, 3, 4]);
 
 $data = json_decode(file_get_contents("php://input"));
 $acting_user_id = $_SESSION['user_id']; // The ID of the person reviewing
+$acting_role_id = $_SESSION['role_id'];
+
+if (empty($data->leave_id)) {
+    http_response_code(400);
+    echo json_encode(["error" => "Missing Leave ID."]);
+    exit;
+}
 
 try {
+    // Check the role of the requester
+    $stmt = $pdo->prepare("SELECT u.role_id FROM leave_requests lr
+                           JOIN employees e ON lr.employee_id = e.employee_id
+                           JOIN users u ON e.user_id = u.user_id
+                           WHERE lr.leave_id = ?");
+    $stmt->execute([$data->leave_id]);
+    $requester = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$requester) {
+        http_response_code(404);
+        echo json_encode(["error" => "Leave request not found."]);
+        exit;
+    }
+
+    // If requester is a Coach (role 2) and acting user is also a Coach (role 2)
+    if ($requester['role_id'] == 2 && $acting_role_id == 2) {
+        http_response_code(403);
+        echo json_encode(["error" => "Coaches cannot review other coaches' requests. Only Admins can do this."]);
+        exit;
+    }
+
     $pdo->beginTransaction();
 
     // 1. Update Leave Status and record who reviewed/approved it

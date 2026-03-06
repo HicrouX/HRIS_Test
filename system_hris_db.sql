@@ -162,7 +162,6 @@ INSERT INTO `cluster_members` (`cluster_id`, `employee_id`, `assigned_at`) VALUE
 CREATE TABLE `employees` (
   `employee_id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) DEFAULT NULL,
-  `permission_id` int(11) DEFAULT NULL,
   `first_name` varchar(50) DEFAULT NULL,
   `middle_name` varchar(50) DEFAULT NULL,
   `last_name` varchar(50) DEFAULT NULL,
@@ -261,10 +260,10 @@ INSERT INTO `overtime_requests` (`ot_id`, `employee_id`, `ot_type`, `start_time`
 -- --------------------------------------------------------
 
 --
--- Table structure for table `permission`
+-- Table structure for table `permissions`
 --
 
-CREATE TABLE `permission` (
+CREATE TABLE `permissions` (
   `permission_id` int(11) NOT NULL AUTO_INCREMENT,
   `permission_name` varchar(100) DEFAULT NULL,
   PRIMARY KEY (`permission_id`)
@@ -292,10 +291,10 @@ INSERT INTO `roles` (`role_id`, `role_name`, `role_description`) VALUES
 -- --------------------------------------------------------
 
 --
--- Table structure for table `role_permission`
+-- Table structure for table `role_permissions`
 --
 
-CREATE TABLE `role_permission` (
+CREATE TABLE `role_permissions` (
   `role_id` int(11) NOT NULL,
   `permission_id` int(11) NOT NULL,
   PRIMARY KEY (`role_id`,`permission_id`)
@@ -424,8 +423,7 @@ ALTER TABLE `cluster_members`
   ADD CONSTRAINT `cluster_members_ibfk_2` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`employee_id`);
 
 ALTER TABLE `employees`
-  ADD CONSTRAINT `employees_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`),
-  ADD CONSTRAINT `employees_ibfk_2` FOREIGN KEY (`permission_id`) REFERENCES `permission` (`permission_id`);
+  ADD CONSTRAINT `employees_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`);
 
 ALTER TABLE `leave_requests`
   ADD CONSTRAINT `leave_requests_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`employee_id`),
@@ -436,9 +434,9 @@ ALTER TABLE `overtime_requests`
   ADD CONSTRAINT `overtime_requests_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`employee_id`),
   ADD CONSTRAINT `overtime_requests_ibfk_2` FOREIGN KEY (`approved_by`) REFERENCES `users` (`user_id`);
 
-ALTER TABLE `role_permission`
+ALTER TABLE `role_permissions`
   ADD CONSTRAINT `role_permission_ibfk_1` FOREIGN KEY (`role_id`) REFERENCES `roles` (`role_id`),
-  ADD CONSTRAINT `role_permission_ibfk_2` FOREIGN KEY (`permission_id`) REFERENCES `permission` (`permission_id`);
+  ADD CONSTRAINT `role_permission_ibfk_2` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`permission_id`);
 
 ALTER TABLE `schedules`
   ADD CONSTRAINT `schedules_ibfk_1` FOREIGN KEY (`cluster_id`) REFERENCES `clusters` (`cluster_id`),
@@ -453,7 +451,7 @@ ALTER TABLE `users`
 
 ALTER TABLE `user_permissions`
   ADD CONSTRAINT `user_permissions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`),
-  ADD CONSTRAINT `user_permissions_ibfk_2` FOREIGN KEY (`permission_id`) REFERENCES `permission` (`permission_id`);
+  ADD CONSTRAINT `user_permissions_ibfk_2` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`permission_id`);
 
 COMMIT;
 

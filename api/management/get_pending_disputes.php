@@ -22,8 +22,8 @@ try {
 
     // Visibility Logic
     if ($acting_role_id == 2) {
-        // Coach: Only see disputes where they are the cluster owner
-        $sql .= " AND c.user_id = ?";
+        // Coach: Only see disputes where they are the cluster owner AND requester is NOT a coach
+        $sql .= " AND c.user_id = ? AND u.role_id != 2";
         $params = [$acting_emp_id, $acting_user_id];
     } else {
         // Admin/Super Admin: See all

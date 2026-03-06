@@ -9,17 +9,45 @@ $data = json_decode(file_get_contents("php://input"));
 $action = $data->action; 
 $ot_id = $data->ot_id;
 $acting_user_id = $_SESSION['user_id'];
+$acting_role_id = $_SESSION['role_id'];
 
-// Map Action to DB Enum
-$new_status = match($action) {
-    'ENDORSE' => 'Endorsed',
-    'APPROVE' => 'Approved',
-    'DENY'    => 'Denied',
-    default   => ''
-};
+if (empty($ot_id)) {
+    http_response_code(400);
+    echo json_encode(["error" => "Missing Overtime ID."]);
+    exit;
+}
 
-if ($new_status && $ot_id) {
-    try {
+try {
+    // Check the role of the requester
+    $stmt = $pdo->prepare("SELECT u.role_id FROM overtime_requests orq
+                           JOIN employees e ON orq.employee_id = e.employee_id
+                           JOIN users u ON e.user_id = u.user_id
+                           WHERE orq.ot_id = ?");
+    $stmt->execute([$ot_id]);
+    $requester = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$requester) {
+        http_response_code(404);
+        echo json_encode(["error" => "Overtime request not found."]);
+        exit;
+    }
+
+    // If requester is a Coach (role 2) and acting user is also a Coach (role 2)
+    if ($requester['role_id'] == 2 && $acting_role_id == 2) {
+        http_response_code(403);
+        echo json_encode(["error" => "Coaches cannot update other coaches' requests. Only Admins can do this."]);
+        exit;
+    }
+
+    // Map Action to DB Enum
+    $new_status = match($action) {
+        'ENDORSE' => 'Endorsed',
+        'APPROVE' => 'Approved',
+        'DENY'    => 'Denied',
+        default   => ''
+    };
+
+    if ($new_status) {
         $pdo->beginTransaction();
 
         // 1. Update the Request Status
