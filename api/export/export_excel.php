@@ -43,7 +43,7 @@ try {
     $params = [];
 
     // --- 1. ADMIN EXPORT (ALL) ---
-    if ($mode === 'ALL' && ($role_id == 3 || $role_id == 4)) {
+    if ($mode === 'ALL' && ($role_id == 1 || $role_id == 2)) {
         $sql = "SELECT e.employee_id, CONCAT(e.first_name, ' ', e.last_name) as full_name, 
                        a.attendance_date, t.time_in, t.time_out, a.attendance_status,
                        ROUND(TIMESTAMPDIFF(MINUTE, t.time_in, t.time_out) / 60, 2) as total_hours
@@ -55,7 +55,7 @@ try {
         $params = [$start, $end];
 
     // --- 2. SINGLE EMPLOYEE EXPORT (Admin/Coach Specific) ---
-    } elseif ($mode === 'SINGLE' && ($role_id >= 2)) {
+    } elseif ($mode === 'SINGLE' && ($role_id <= 3)) {
         $sql = "SELECT e.employee_id, CONCAT(e.first_name, ' ', e.last_name) as full_name, 
                        a.attendance_date, t.time_in, t.time_out, a.attendance_status,
                        ROUND(TIMESTAMPDIFF(MINUTE, t.time_in, t.time_out) / 60, 2) as total_hours
@@ -67,7 +67,7 @@ try {
         $params = [$target_id, $start, $end];
 
     // --- 3. TEAM EXPORT (Coach) ---
-    } elseif ($mode === 'TEAM' && ($role_id >= 2)) {
+    } elseif ($mode === 'TEAM' && ($role_id <= 3)) {
         // Uses cluster_members and clusters from your SQL dump
         $sql = "SELECT e.employee_id, CONCAT(e.first_name, ' ', e.last_name) as full_name, 
                        a.attendance_date, t.time_in, t.time_out, a.attendance_status,

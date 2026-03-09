@@ -2,6 +2,21 @@
 // FILE: login.php
 session_start();
 require_once 'api/config/db.php';
+
+// If already logged in, redirect to respective dashboard
+if (isset($_SESSION['role_id'])) {
+    if ($_SESSION['role_id'] === 1) {
+        header("Location: super_admin_dashboard.php");
+    } elseif ($_SESSION['role_id'] === 2) {
+        header("Location: admin_dashboard.php");
+    } elseif ($_SESSION['role_id'] === 3) {
+        header("Location: coach_dashboard.php");
+    } else {
+        header("Location: employee_dashboard.php");
+    }
+    exit;
+}
+
 header("Content-Type: text/html; charset=UTF-8");
 $error = "";
 
@@ -26,11 +41,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['user_name'] = $user['first_name'] . ' ' . $user['last_name'];
 
             // Redirection logic based on Role ID
-            if ($_SESSION['role_id'] === 4) {
+            if ($_SESSION['role_id'] === 1) {
                 header("Location: super_admin_dashboard.php");
-            } elseif ($_SESSION['role_id'] === 3) {
-                header("Location: admin_dashboard.php");
             } elseif ($_SESSION['role_id'] === 2) {
+                header("Location: admin_dashboard.php");
+            } elseif ($_SESSION['role_id'] === 3) {
                 header("Location: coach_dashboard.php");
             } else {
                 header("Location: employee_dashboard.php");

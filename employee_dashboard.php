@@ -11,10 +11,11 @@ require_once 'api/middleware/auth.php';
 
 // Verify Employee Access
 if (!isset($_SESSION['role_id'])) { header("Location: login.php"); exit; }
-if ($_SESSION['role_id'] == 2) { header("Location: coach_dashboard.php"); exit; }
-if ($_SESSION['role_id'] >= 3) { header("Location: admin_dashboard.php"); exit; }
+if ($_SESSION['role_id'] == 3) { header("Location: coach_dashboard.php"); exit; }
+if ($_SESSION['role_id'] == 2) { header("Location: admin_dashboard.php"); exit; }
+if ($_SESSION['role_id'] == 1) { header("Location: super_admin_dashboard.php"); exit; }
 
-verifyAccess([1]); 
+verifyAccess([4]); 
 
 $api_base_url = "http://localhost/hris_official/api"; 
 

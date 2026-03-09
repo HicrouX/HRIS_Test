@@ -6,8 +6,8 @@ header("Content-Type: application/json; charset=UTF-8");
 require_once '../config/db.php';
 require_once '../middleware/auth.php';
 
-// Restricted to Admin (3) and Super Admin (4)
-verifyAccess([3, 4]);
+// Restricted to Super Admin (1) and Admin (2)
+verifyAccess([1, 2]);
 
 $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-01');
 $end_date   = isset($_GET['end_date'])   ? $_GET['end_date']   : date('Y-m-t');

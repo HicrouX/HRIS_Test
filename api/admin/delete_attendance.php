@@ -1,7 +1,7 @@
 <?php
 require_once '../config/db.php';
 require_once '../middleware/auth.php';
-verifyAccess([3, 4]); // Admin or Super Admin
+verifyAccess([1, 2]); // Admin or Super Admin
 
 $id = $_GET['attendance_id'] ?? 0;
 

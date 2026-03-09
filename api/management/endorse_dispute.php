@@ -3,8 +3,8 @@
 require_once '../config/db.php';
 require_once '../middleware/auth.php';
 
-// Allow Coaches (2), Admins (3), Super Admins (4)
-verifyAccess([2, 3, 4]); 
+// Allow Super Admins (1), Admins (2), Coaches (3)
+verifyAccess([1, 2, 3]); 
 
 $acting_user_id = $_SESSION['user_id'];
 $acting_role_id = $_SESSION['role_id'];
@@ -32,8 +32,8 @@ try {
         exit;
     }
 
-    // If requester is a Coach (role 2) and acting user is also a Coach (role 2)
-    if ($requester['role_id'] == 2 && $acting_role_id == 2) {
+    // If requester is a Coach (role 3) and acting user is also a Coach (role 3)
+    if ($requester['role_id'] == 3 && $acting_role_id == 3) {
         http_response_code(403);
         echo json_encode(["error" => "Coaches cannot endorse other coaches' requests. Only Admins can do this."]);
         exit;

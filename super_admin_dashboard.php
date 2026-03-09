@@ -6,7 +6,7 @@ require_once 'api/config/db.php';
 require_once 'api/middleware/auth.php';
 
 // STRICT ACCESS CONTROL: Only Super Admin (Role 4)
-if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 4) {
+if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 1) {
     header("Location: login.php"); exit;
 }
 
@@ -402,9 +402,6 @@ if (isset($_GET['edit_id'])) {
                         <option value="Absent" <?php echo $edit_record['attendance_status'] == 'Absent' ? 'selected' : ''; ?>>Absent</option>
                         <option value="On Leave" <?php echo $edit_record['attendance_status'] == 'On Leave' ? 'selected' : ''; ?>>On Leave</option>
                         <option value="Overtime" <?php echo $edit_record['attendance_status'] == 'Overtime' ? 'selected' : ''; ?>>Overtime</option>
-                        <option value="Undertime" <?php echo $edit_record['attendance_status'] == 'Undertime' ? 'selected' : ''; ?>>Undertime</option>
-                        <option value="Duty on Rest Day" <?php echo $edit_record['attendance_status'] == 'Duty on Rest Day' ? 'selected' : ''; ?>>Duty on Rest Day</option>
-                        <option value="Tardy" <?php echo $edit_record['attendance_status'] == 'Tardy' ? 'selected' : ''; ?>>Tardy</option>
                     </select>
                 </div>
 
@@ -437,7 +434,6 @@ if (isset($_GET['edit_id'])) {
                     <option value="Absent">Absent</option>
                     <option value="Overtime">Overtime</option>
                     <option value="On Leave">On Leave</option>
-                    <option value="Duty on Rest Day">Duty on Rest Day</option>
                 </select>
                 <div style="display:flex; gap:10px; margin-bottom:10px;">
                     <div style="flex:1;">In: <input type="time" id="resIn" style="width:100%; padding:8px; box-sizing:border-box;"></div>
@@ -633,7 +629,7 @@ if (isset($_GET['edit_id'])) {
             const data = await res.json(); 
             document.getElementById("hierarchyBody").innerHTML = data.map(log => { 
                 let name = `<strong>${log.first_name} ${log.last_name}</strong>`;
-                if (log.role_id == 2) { 
+                if (log.role_id == 3) { 
                      name = `<span class="coach-pill" onclick="viewTeam(${log.employee_id}, '${log.first_name}')">👤 ${log.first_name} (Coach)</span>`;
                 }
                 return `<tr><td>${name}</td><td>${log.latest_date||'-'}</td><td><span class="pill status-${(log.latest_status||'').replace(/\s/g,'')}">${log.latest_status||'Inactive'}</span></td><td><button class="btn btn-edit" onclick="openHistory(${log.employee_id}, '${log.first_name}')">👁️ logs</button></td></tr>`; 

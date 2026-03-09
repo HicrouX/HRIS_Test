@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') { http_response_code(200); exit(); 
 require_once '../config/db.php';
 require_once '../middleware/auth.php';
 
-verifyAccess([3, 4]);
+verifyAccess([1, 2]);
 $acting_user_id = $_SESSION['user_id']; 
 
 $data = json_decode(file_get_contents("php://input"));

@@ -4,7 +4,7 @@ header("Content-Type: application/json; charset=UTF-8");
 require_once '../config/db.php';
 require_once '../middleware/auth.php';
 
-verifyAccess([2, 3, 4]); 
+verifyAccess([1, 2, 3]); 
 $acting_user_id = $_SESSION['user_id']; 
 $acting_emp_id = $_SESSION['employee_id'];
 $acting_role_id = $_SESSION['role_id'];
@@ -21,9 +21,9 @@ try {
             AND d.employee_id != ?";
 
     // Visibility Logic
-    if ($acting_role_id == 2) {
+    if ($acting_role_id == 3) {
         // Coach: Only see disputes where they are the cluster owner AND requester is NOT a coach
-        $sql .= " AND c.user_id = ? AND u.role_id != 2";
+        $sql .= " AND c.user_id = ? AND u.role_id != 3";
         $params = [$acting_emp_id, $acting_user_id];
     } else {
         // Admin/Super Admin: See all

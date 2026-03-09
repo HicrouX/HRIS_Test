@@ -2,7 +2,7 @@
 require_once '../config/db.php';
 require_once '../middleware/auth.php';
 
-verifyAccess([2, 3, 4]);
+verifyAccess([1, 2, 3]);
 $acting_user_id = $_SESSION['user_id'];
 $acting_role_id = $_SESSION['role_id'];
 
@@ -13,7 +13,7 @@ try {
             JOIN cluster_members cm ON e.employee_id = cm.employee_id
             JOIN clusters c ON cm.cluster_id = c.cluster_id
             WHERE c.user_id = ?
-            AND (u.role_id != 2 OR ? != 2)";
+            AND (u.role_id != 3 OR ? != 3)";
             
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$acting_user_id, $acting_role_id]);

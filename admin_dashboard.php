@@ -11,8 +11,9 @@ require_once 'api/config/db.php';
 require_once 'api/middleware/auth.php';
 
 // Verify Admin Access
-if (!isset($_SESSION['role_id']) || ($_SESSION['role_id'] != 3 && $_SESSION['role_id'] != 4)) {
-    header("Location: login.php"); exit;
+if (!isset($_SESSION['role_id']) || ($_SESSION['role_id'] != 1 && $_SESSION['role_id'] != 2)) {
+    header("Location: login.php");
+    exit;
 }
 
 $api_base_url = "http://localhost/hris_official/api"; 
@@ -357,7 +358,6 @@ if (isset($_GET['edit_id'])) {
                     <option value="Absent">Absent</option>
                     <option value="Overtime">Overtime</option>
                     <option value="On Leave">On Leave</option>
-                    <option value="Duty on Rest Day">Duty on Rest Day</option>
                 </select>
                 <div style="display:flex; gap:10px; margin-bottom:10px;">
                     <div>Proposed In: <input type="time" id="finalTimeIn"></div>
@@ -499,7 +499,7 @@ if (isset($_GET['edit_id'])) {
                 tbody.innerHTML = data.map(log => {
                     let nameDisplay = `<strong>${log.first_name} ${log.last_name}</strong>`;
                     let actions = `<span class="action-icon" style="color:#3498db;" onclick="viewMemberHistory(${log.employee_id}, '${log.first_name}')">👁️</span>`;
-                    if (log.role_id == 2) nameDisplay = `<span class="clickable-name" onclick="viewTeam(${log.employee_id}, '${log.first_name}')">${log.first_name} ${log.last_name} (Coach)</span>`;
+                    if (log.role_id == 3) nameDisplay = `<span class="clickable-name" onclick="viewTeam(${log.employee_id}, '${log.first_name}')">${log.first_name} ${log.last_name} (Coach)</span>`;
                     if (log.latest_id) actions += `<a href="admin_dashboard.php?edit_id=${log.latest_id}" class="action-icon">✏️</a>`;
                     return `<tr><td>${nameDisplay}</td><td>${log.latest_date||'-'}</td><td><span class="status-pill status-${(log.latest_status||'').replace(/\s/g,'')}">${log.latest_status||'Inactive'}</span></td><td>${actions}</td></tr>`;
                 }).join('');

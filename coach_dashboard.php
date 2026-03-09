@@ -8,7 +8,14 @@ header("Pragma: no-cache");
 
 require_once 'api/config/db.php'; 
 require_once 'api/middleware/auth.php';
-verifyAccess([2]); // Coach Access Only
+
+// Verify Coach Access
+if (!isset($_SESSION['role_id'])) { header("Location: login.php"); exit; }
+if ($_SESSION['role_id'] == 4) { header("Location: employee_dashboard.php"); exit; }
+if ($_SESSION['role_id'] == 2) { header("Location: admin_dashboard.php"); exit; }
+if ($_SESSION['role_id'] == 1) { header("Location: super_admin_dashboard.php"); exit; }
+
+verifyAccess([3]); // Coach Access Only
 
 $api_base_url = "http://localhost/hris_official/api";
 
@@ -360,7 +367,6 @@ try {
                     <option value="Absent">Absent</option>
                     <option value="Overtime">Overtime</option>
                     <option value="On Leave">On Leave</option>
-                    <option value="Duty on Rest Day">Duty on Rest Day</option>
                 </select>
                 <div style="display:flex; gap:10px; margin-bottom:10px;">
                     <div style="flex:1;">Proposed In: <input type="time" id="finalTimeIn" style="width:100%; padding:8px; box-sizing:border-box;"></div>

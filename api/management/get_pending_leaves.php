@@ -4,7 +4,7 @@ header("Content-Type: application/json; charset=UTF-8");
 require_once '../config/db.php';
 require_once '../middleware/auth.php';
 
-verifyAccess([2, 3, 4]);
+verifyAccess([1, 2, 3]);
 $acting_user_id = $_SESSION['user_id'];
 $acting_role_id = $_SESSION['role_id'];
 
@@ -18,7 +18,7 @@ try {
             JOIN clusters c ON cm.cluster_id = c.cluster_id
             WHERE lr.status = 'Pending' 
             AND c.user_id = ?
-            AND (u.role_id != 2 OR ? != 2)
+            AND (u.role_id != 3 OR ? != 3)
             ORDER BY lr.created_at ASC";
 
     $stmt = $pdo->prepare($sql);

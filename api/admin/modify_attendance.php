@@ -4,7 +4,7 @@ require_once '../config/db.php';
 require_once '../middleware/auth.php';
 
 // Security check: Only Admin/Super Admin can override attendance
-verifyAccess([3, 4]); 
+verifyAccess([1, 2]); 
 
 $data = json_decode(file_get_contents("php://input"));
 

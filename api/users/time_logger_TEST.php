@@ -2,7 +2,7 @@
 require_once '../config/db.php';
 require_once '../middleware/auth.php';
 
-verifyAccess([1]); // Ensure it is an Employee
+verifyAccess([4]); // Ensure it is an Employee
 
 $data = json_decode(file_get_contents("php://input"));
 $current_date = date('Y-m-d');
