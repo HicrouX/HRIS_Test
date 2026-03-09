@@ -39,13 +39,21 @@ try {
             $getUserId->execute([$ot['employee_id']]);
             $user_id = $getUserId->fetchColumn();
 
-            $syncTime = $pdo->prepare("INSERT INTO time_logs (employee_id, user_id, attendance_id, time_in, time_out, log_date) 
-                                   VALUES (?, ?, ?, ?, ?, ?) 
-                                   ON DUPLICATE KEY UPDATE time_in = ?, time_out = ?");
-            $syncTime->execute([
-                $ot['employee_id'], $user_id, $attendance_id, $ot['start_time'], $ot['end_time'], $date_str,
-                $ot['start_time'], $ot['end_time']
-            ]);
+            // Check for existing time log
+            $checkTime = $pdo->prepare("SELECT time_log_id FROM time_logs WHERE employee_id = ? AND log_date = ?");
+            $checkTime->execute([$ot['employee_id'], $date_str]);
+            $existing_time_log_id = $checkTime->fetchColumn();
+
+            if ($existing_time_log_id) {
+                $syncTime = $pdo->prepare("UPDATE time_logs SET user_id = ?, attendance_id = ?, time_in = ?, time_out = ? WHERE time_log_id = ?");
+                $syncTime->execute([$user_id, $attendance_id, $ot['start_time'], $ot['end_time'], $existing_time_log_id]);
+            } else {
+                $syncTime = $pdo->prepare("INSERT INTO time_logs (employee_id, user_id, attendance_id, time_in, time_out, log_date) 
+                                       VALUES (?, ?, ?, ?, ?, ?)");
+                $syncTime->execute([
+                    $ot['employee_id'], $user_id, $attendance_id, $ot['start_time'], $ot['end_time'], $date_str
+                ]);
+            }
         }
     }
 

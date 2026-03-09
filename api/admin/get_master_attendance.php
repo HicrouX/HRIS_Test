@@ -21,7 +21,7 @@ try {
             LEFT JOIN attendance_logs a ON e.employee_id = a.employee_id 
                  AND a.attendance_date BETWEEN ? AND ?
             LEFT JOIN time_logs t ON a.attendance_id = t.attendance_id
-            WHERE 1=1";
+            WHERE u.role_id != 1";
 
     $params = [$start, $end];
     if (!empty($role)) {

@@ -1,5 +1,5 @@
 <?php
-// api/users/get_member_attendance.php
+// api/management/get_member_attendance.php
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 require_once '../config/db.php';
@@ -74,6 +74,7 @@ try {
             'break_out' => ($row['break_out']) ? date('h:i A', strtotime($row['break_out'])) : '-',
             'status' => $row['attendance_status'],
             'total_hours' => $hours_worked,
+            'lunch_break' => number_format($lunch_deduction, 2),
             'lunch_deduction' => number_format($lunch_deduction, 2)
         ];
     }

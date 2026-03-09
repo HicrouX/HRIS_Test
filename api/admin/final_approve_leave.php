@@ -52,17 +52,24 @@ try {
                                        ON DUPLICATE KEY UPDATE attendance_status = 'On Leave'");
                 $syncAtt->execute([$leave['employee_id'], $date_str]);
 
-                $attendance_id = $pdo->lastInsertId();
-                if (!$attendance_id) {
-                    $getAttId = $pdo->prepare("SELECT attendance_id FROM attendance_logs WHERE employee_id = ? AND attendance_date = ?");
-                    $getAttId->execute([$leave['employee_id'], $date_str]);
-                    $attendance_id = $getAttId->fetchColumn();
-                }
+                // Get the attendance_id (whether new or existing)
+                $getAttId = $pdo->prepare("SELECT attendance_id FROM attendance_logs WHERE employee_id = ? AND attendance_date = ?");
+                $getAttId->execute([$leave['employee_id'], $date_str]);
+                $attendance_id = $getAttId->fetchColumn();
 
-                $syncTime = $pdo->prepare("INSERT INTO time_logs (employee_id, user_id, attendance_id, time_in, time_out, log_date) 
-                                       VALUES (?, ?, ?, NULL, NULL, ?) 
-                                       ON DUPLICATE KEY UPDATE time_in = NULL, time_out = NULL");
-                $syncTime->execute([$leave['employee_id'], $user_id, $attendance_id, $date_str]);
+                // Check for existing time log
+                $checkTime = $pdo->prepare("SELECT time_log_id FROM time_logs WHERE employee_id = ? AND log_date = ?");
+                $checkTime->execute([$leave['employee_id'], $date_str]);
+                $existing_time_log_id = $checkTime->fetchColumn();
+
+                if ($existing_time_log_id) {
+                    $syncTime = $pdo->prepare("UPDATE time_logs SET user_id = ?, attendance_id = ?, time_in = NULL, time_out = NULL WHERE time_log_id = ?");
+                    $syncTime->execute([$user_id, $attendance_id, $existing_time_log_id]);
+                } else {
+                    $syncTime = $pdo->prepare("INSERT INTO time_logs (employee_id, user_id, attendance_id, time_in, time_out, log_date) 
+                                           VALUES (?, ?, ?, NULL, NULL, ?)");
+                    $syncTime->execute([$leave['employee_id'], $user_id, $attendance_id, $date_str]);
+                }
             }
         }
     }

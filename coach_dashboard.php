@@ -625,7 +625,7 @@ try {
         
         async function loadMyAttendance() { 
             const s = document.getElementById('range_start').value, e = document.getElementById('range_end').value;
-            const r = await fetch(`${API}/users/get_member_attendance.php?employee_id=${COACH_ID}&start_date=${s}&end_date=${e}`); 
+            const r = await fetch(`${API}/management/get_member_attendance.php?employee_id=${COACH_ID}&start_date=${s}&end_date=${e}`); 
             const d = await r.json(); 
             document.getElementById('myAttendanceBody').innerHTML = d.length ? d.map(x => `<tr><td>${x.date}</td><td>${x.time_in||'--'}</td><td>${x.time_out||'--'}</td><td>${x.break_in||'--'}</td><td>${x.break_out||'--'}</td><td><span class="status-pill status-${(x.status||'').replace(/\s/g,'')}">${x.status}</span></td><td>${x.total_hours||'0.00'}</td></tr>`).join('') : '<tr><td colspan="7">No records</td></tr>'; 
             updateTableSummaries('myAttTable');
@@ -640,7 +640,7 @@ try {
 
         async function filterMemberHistory() {
             const empId = document.getElementById('current_view_id').value;
-            const res = await fetch(`${API}/users/get_member_attendance.php?employee_id=${empId}`);
+            const res = await fetch(`${API}/management/get_member_attendance.php?employee_id=${empId}`);
             const data = await res.json();
             document.getElementById('modalHistoryBody').innerHTML = data.map(row => `<tr><td>${row.date}</td><td><span class="status-pill status-${(row.status||'').replace(/\s/g,'')}">${row.status}</span></td><td>${row.time_in}</td><td>${row.time_out}</td><td>${row.break_in}</td><td>${row.break_out}</td><td>${row.lunch_break}</td><td>${row.total_hours}</td></tr>`).join('');
         }

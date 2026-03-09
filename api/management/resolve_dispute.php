@@ -69,19 +69,23 @@ try {
             $dt_in = $data->time_in ? date('Y-m-d H:i:s', strtotime($dispute['dispute_date'] . " " . $data->time_in)) : null;
             $dt_out = $data->time_out ? date('Y-m-d H:i:s', strtotime($dispute['dispute_date'] . " " . $data->time_out)) : null;
 
+            // Check if a time log already exists for this employee and date
+            $checkTime = $pdo->prepare("SELECT time_log_id FROM time_logs WHERE employee_id = ? AND log_date = ?");
+            $checkTime->execute([$dispute['employee_id'], $dispute['dispute_date']]);
+            $existing_time_log_id = $checkTime->fetchColumn();
+
             // Note: time_logs needs user_id. For consistency, we'll try to get it from the employees record.
             $getUserId = $pdo->prepare("SELECT user_id FROM employees WHERE employee_id = ?");
             $getUserId->execute([$dispute['employee_id']]);
             $user_id = $getUserId->fetchColumn();
 
-            $syncTime = $pdo->prepare("INSERT INTO time_logs (employee_id, user_id, attendance_id, time_in, time_out, log_date) 
-                                   VALUES (?, ?, ?, ?, ?, ?) 
-                                   ON DUPLICATE KEY UPDATE time_in = ?, time_out = ?");
-            
-            $syncTime->execute([
-                $dispute['employee_id'], $user_id, $attendance_id, $dt_in, $dt_out, $dispute['dispute_date'],
-                $dt_in, $dt_out
-            ]);
+            if ($existing_time_log_id) {
+                $syncTime = $pdo->prepare("UPDATE time_logs SET user_id = ?, attendance_id = ?, time_in = ?, time_out = ? WHERE time_log_id = ?");
+                $syncTime->execute([$user_id, $attendance_id, $dt_in, $dt_out, $existing_time_log_id]);
+            } else {
+                $syncTime = $pdo->prepare("INSERT INTO time_logs (employee_id, user_id, attendance_id, time_in, time_out, log_date) VALUES (?, ?, ?, ?, ?, ?)");
+                $syncTime->execute([$dispute['employee_id'], $user_id, $attendance_id, $dt_in, $dt_out, $dispute['dispute_date']]);
+            }
         }
     }
 

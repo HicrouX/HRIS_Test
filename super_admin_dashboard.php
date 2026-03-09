@@ -220,7 +220,8 @@ if (isset($_GET['edit_id'])) {
     <div class="sidebar">
         <div class="logo">iREPLY SYSTEM</div>
         <nav>
-            <a href="#" class="nav-item nav-active" onclick="switchView('management-view', this)">📊 Management Hierarchy</a>
+            <a href="#" class="nav-item nav-active" onclick="switchView('master-attendance-view', this)">📊 Master Attendance</a>
+            <a href="#" class="nav-item" onclick="switchView('management-view', this)">👥 Management Hierarchy</a>
             <a href="#" class="nav-item" onclick="switchView('approvals', this)">✅ Final Sign-offs</a>
             <a href="#" class="nav-item" onclick="switchView('disputes-view', this)">⚠️ Resolution Center</a>
             <a href="#" class="nav-item" onclick="switchView('history-view', this)">📜 Global Request Logs</a>
@@ -230,7 +231,31 @@ if (isset($_GET['edit_id'])) {
     </div>
 
     <div class="main-content">
-        <div id="management-view" class="view-content active-view">
+        <div id="master-attendance-view" class="view-content active-view">
+            <div class="header">
+                <h2>📊 Master Attendance</h2>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <select id="master_role" class="search-input">
+                        <option value="">All Roles</option>
+                        <option value="2">Admin</option>
+                        <option value="3">Coach</option>
+                        <option value="4">Employee</option>
+                    </select>
+                    <input type="date" id="master_start" class="search-input">
+                    <input type="date" id="master_end" class="search-input">
+                    <button class="btn btn-edit" onclick="loadMasterAttendance()">View</button>
+                    <input type="text" id="masterSearch" class="search-input" placeholder="🔍 Search name..." onkeyup="filterTable('masterTable', this.value)">
+                </div>
+            </div>
+            <div class="container">
+                <table id="masterTable">
+                    <thead><tr><th onclick="sortTable('masterTable',0)">Employee ⬍</th><th onclick="sortTable('masterTable',1)">Role ⬍</th><th onclick="sortTable('masterTable',2)">Date ⬍</th><th>In</th><th>Out</th><th>Hrs</th><th>Status</th></tr></thead>
+                    <tbody id="masterBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="management-view" class="view-content">
             <div class="header">
                 <div>
                     <button id="backBtn" onclick="resetToLeaders()" style="display:none; cursor:pointer; background:rgba(255,255,255,0.2); border:none; padding:5px 10px; color:white; border-radius:15px; font-size:11px;">⬅ Back to Coaches</button>
@@ -456,6 +481,41 @@ if (isset($_GET['edit_id'])) {
         let viewingMemberId = null;
         let globalMasterData = []; 
         let activeStatusFilters = [];
+
+        async function loadMasterAttendance() {
+            const start = document.getElementById('master_start').value;
+            const end = document.getElementById('master_end').value;
+            const role = document.getElementById('master_role').value;
+            const res = await fetch(`${API}/admin/get_master_attendance.php?start_date=${start}&end_date=${end}&role=${role}`);
+            globalMasterData = await res.json();
+            renderMasterTable();
+        }
+
+        function renderMasterTable() {
+            const tbody = document.getElementById('masterBody');
+            if (!tbody) return;
+            tbody.innerHTML = globalMasterData
+                .filter(d => activeStatusFilters.length === 0 || activeStatusFilters.includes(d.attendance_status))
+                .map(d => `
+                    <tr>
+                        <td><strong>${d.first_name} ${d.last_name}</strong></td>
+                        <td>${d.role_name}</td>
+                        <td>${d.attendance_date || "-"}</td>
+                        <td>${d.time_in ? d.time_in.substring(11,16) : "--:--"}</td>
+                        <td>${d.time_out ? d.time_out.substring(11,16) : "--:--" }</td>
+                        <td>${d.total_hours || "0.00"}</td>
+                        <td><span class="pill status-${(d.attendance_status || "Absent").replace(/\s/g,"")}">${d.attendance_status || "Absent"}</span></td>
+                    </tr>
+                `).join("");
+        }
+
+        function filterTable(tid, val) {
+            let filter = val.toLowerCase();
+            let rows = document.getElementById(tid).tBodies[0].rows;
+            Array.from(rows).forEach(r => {
+                r.style.display = r.innerText.toLowerCase().includes(filter) ? "" : "none";
+            });
+        }
 
         // ✅ FIXED UNIVERSAL SORTING FUNCTION (Handles Text, Dates, and Numbers perfectly)
         function sortTable(tid, n) {
@@ -690,7 +750,9 @@ if (isset($_GET['edit_id'])) {
         window.onload = function() {
             const d = new Date(), s = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0], e = d.toISOString().split('T')[0];
             document.getElementById('hist_start').value = s; document.getElementById('hist_end').value = e;
-            loadHierarchy(); // Set Hierarchy as default view
+            document.getElementById('master_start').value = s; 
+            document.getElementById('master_end').value = e;
+            loadMasterAttendance(); // Set Master Attendance as default view
         };
     </script>
 </body>
