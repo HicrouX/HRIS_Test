@@ -1,0 +1,27 @@
+Test ID,Category,Feature,Description,Steps / Pre-conditions,Expected Result
+AUTH-01,Authentication,Role Access,Access Employee-only API (file_leave.php) with X-USER-ROLE: 1.,Valid session or X-USER-ROLE: 1 header.,HTTP 200 (Success)
+AUTH-02,Authentication,Unauthorized Access,Access Admin API (final_approve_leave.php) with X-USER-ROLE: 1.,Employee role ID sent to Admin endpoint.,HTTP 403 (Forbidden) with Unauthorized JSON
+AUTH-03,Authentication,Missing Role,Access any protected API without headers or session.,No auth headers provided.,HTTP 403 with detailed debug info
+AUTH-04,Authentication,Role Escalation,Attempt to access Coach API using modified role header.,Basic user login; attempt to spoof role 2.,System validates role against backend session/database
+LEV-01,Leave Management,Filing,Employee files a Sick Leave via file_leave.php.,Fill all fields + check agreement checkboxes.,Status set to 'Pending' in leave_requests table
+LEV-02,Leave Management,Validation,File leave with missing required fields.,Leave 'Reason' or 'Start Date' blank.,"HTTP 400; ""Please fill in all required fields."""
+LEV-03,Leave Management,Endorsement,Coach endorses a pending leave via endorse_leave.php.,Pass valid leave_id and coach_id.,Status changes to 'Endorsed'; reviewer_id stored
+LEV-04,Leave Management,Final Approval,Admin approves an endorsed leave via final_approve_leave.php.,Admin role 3/4 performs 'APPROVE' action.,Status = 'Approved'; Dashboard Sync triggered
+LEV-05,Leave Management,Dashboard Sync,Verify 'Approved' leave appears on the attendance board.,Check attendance table for the leave dates.,attendance_status = 'On Leave' for all dates in range
+LEV-06,Leave Management,Data Cleanup,Verify time logs are removed for approved leave days.,Approve leave for a date with an existing time_log.,Associated time_logs for those dates are deleted
+OT-01,Overtime,Filing,Employee files Regular Overtime.,Select OT type; Coach; and Times.,Record added to overtime_requests as 'Pending'
+OT-02,Overtime,Coach Endorse,Coach endorses OT via endorse_overtime.php.,Coach role performs endorse action.,Status = 'Endorsed'; Visible to Admin
+OT-03,Overtime,Final Approval,Admin approves Duty on Rest Day OT.,Admin role 3 performs 'APPROVE' action.,Status = 'Approved'
+OT-04,Overtime,Dashboard Sync,Verify OT status mapping on dashboard.,Check attendance table after OT approval.,Type 'Duty on Rest Day' maps correctly on dashboard
+ATT-01,Attendance,Present Log,Employee logs in before schedule_start.,System time < schedule time.,attendance_status = 'Present'
+ATT-02,Attendance,Late Log,Employee logs in after schedule_start.,System time > schedule time.,attendance_status = 'Late'
+ATT-03,Attendance,Schedule Link,Log attendance for employee with no schedule for that day.,Trigger time_logger_TEST.php.,System handles missing schedule gracefully
+ATT-04,Attendance,My Logs,Employee views their own logs.,Call get_my_time_logs.php.,Returns only logs belonging to logged-in employee_id
+ADM-01,Admin Tools,Record Delete,Admin deletes record with active time logs.,Call delete_attendance.php for record with logs.,"HTTP 400; ""Cannot delete. Associated Logs found."""
+ADM-02,Admin Tools,Record Delete,Admin deletes clean attendance record (no logs).,Call delete_attendance.php.,HTTP 200; Record removed from database
+ADM-03,Admin Tools,Debugger,Run debug_leaves.php script.,Access admin debugger script via browser.,Identifies 'Missing Employees' (ID mismatch)
+ADM-04,Admin Tools,Cluster Mgmt,Admin approves a team cluster.,Call manage_cluster.php.,team_cluster.approved_by updated with Admin ID
+SEC-01,Security,SQL Injection,Input malicious strings into reason/purpose fields.,Input ' OR '1'='1 into form fields.,Handled by PDO prepared statements; no injection
+SYS-01,System,Leap Year,File leave from Feb 28 to March 1.,Date range covers end of February.,System calculates days and inserts records correctly
+SYS-02,System,Overlapping,File leave for dates already marked 'On Leave'.,Trigger duplicate date insertion.,ON DUPLICATE KEY UPDATE prevents primary key errors
+SYS-03,System,Error Handling,Simulate database connection failure.,Modify db.php to invalid credentials.,Returns JSON error; no system paths leaked
