@@ -4,7 +4,7 @@
 // Ensure UTF-8 header to prevent character encoding issues
 header("Content-Type: text/html; charset=UTF-8");
 
-// 🔴 SAFE SESSION START: Start Session ONLY if it's not already running
+//  Start Session ONLY if it's not already running
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
